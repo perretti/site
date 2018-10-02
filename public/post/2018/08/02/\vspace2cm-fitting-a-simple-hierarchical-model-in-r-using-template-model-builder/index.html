@@ -1,17 +1,37 @@
----
-title: Fitting a simple hierarchical model in R using Template Model Builder
-author: Charles Perretti
-date: '2018-08-02'
-categories:
-  - R
-  - TMB
-tags:
-  - hierarchical
-output: html_document
----
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>\vspace{2cm} {Fitting a simple hierarchical model in R using Template Model Builder} | Charles Perretti</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  </head>
 
+  <body>
+    <nav>
+    <ul class="menu">
+      
+      <li><a href="/">Home</a></li>
+      
+      <li><a href="/about/">About</a></li>
+      
+      <li><a href="/categories/">Categories</a></li>
+      
+      <li><a href="/tags/">Tags</a></li>
+      
+    </ul>
+    <hr/>
+    </nav>
 
+<div class="article-meta">
+<h1><span class="title">\vspace{2cm} {Fitting a simple hierarchical model in R using Template Model Builder}</span></h1>
+<h2 class="author">Charles Perretti</h2>
+<h2 class="date">2018/08/02</h2>
+</div>
 
+<main>
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
 <p>This is an example of how to fit a simple hierarchical model in R using Template Model Builder (<a href="https://github.com/kaskr/adcomp">TMB</a>). I’ll describe why you might want to use a hierarchical model, then I’ll show how to code it up and fit it in TMB. I won’t go too deep into the mechanics of TMB (full documentation can be found <a href="https://kaskr.github.io/adcomp/_book/Introduction.html">here</a>), instead I’ll focus on introducing the idea of hierarchical modelling and how to fit one such model in TMB.</p>
@@ -144,5 +164,25 @@ Report_sd &lt;- TMB::sdreport(Obj)</code></pre>
 <p>The blue points are the estimated site means and 95% confidence intervals. The true sites means in red are mostly within the 95% interval of the estimated means, a good sign.</p>
 <p>Now let’s see how well we estimated the global mean and standard deviation. <img src="/post/simple_hierarchical_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
 <p>Both the mean and the standard deviation of the global distribution are within the 95% confidence interval of the parameter estimates which is another indication that the model is working as expected.</p>
-<p>There are lots of ways to extend this model. For example, you could allow each group to have its own observation standard deviation by putting a distribution on <span class="math inline">\(\theta\)</span>. Or you could model the mean of each group as a linear model of some covariates (e.g., a GLMM). The flexibility of the hierarchical concept is what makes it so useful.</p>
 </div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>Hopefully this was a helpful introduction to hierarchical modelling and TMB. There are a lot of ways to extend this simple model. For example, you could allow each group to have its own observation standard deviation by putting a distribution on <span class="math inline">\(\theta\)</span>. Or you could model the mean of each group as a linear model of some covariates (e.g., a GLMM). The flexibility of the hierarchical concept is what makes it so useful.</p>
+</div>
+
+</main>
+
+  <footer>
+  <script src="//yihui.name/js/math-code.js"></script>
+<script async src="//cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+
+<script async src="//yihui.name/js/center-img.js"></script>
+
+  
+  <hr/>
+  <a href="https://github.com/perretti">Github</a> | <a href="https://twitter.com/charlieperretti">Twitter</a>
+  
+  </footer>
+  </body>
+</html>
+

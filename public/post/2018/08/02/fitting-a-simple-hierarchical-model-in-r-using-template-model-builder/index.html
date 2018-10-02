@@ -164,10 +164,7 @@ Report_sd &lt;- TMB::sdreport(Obj)</code></pre>
 <p>The blue points are the estimated site means and 95% confidence intervals. The true sites means in red are mostly within the 95% interval of the estimated means, a good sign.</p>
 <p>Now let’s see how well we estimated the global mean and standard deviation. <img src="/post/simple_hierarchical_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
 <p>Both the mean and the standard deviation of the global distribution are within the 95% confidence interval of the parameter estimates which is another indication that the model is working as expected.</p>
-</div>
-<div id="conclusion" class="section level2">
-<h2>Conclusion</h2>
-<p>Hopefully this was a helpful introduction to hierarchical modelling and TMB. There are a lot of ways to extend this simple model. For example, you could allow each group to have its own observation standard deviation by putting a distribution on <span class="math inline">\(\theta\)</span>. Or you could model the mean of each group as a linear model of some covariates (e.g., a GLMM). The flexibility of the hierarchical concept is what makes it so useful.</p>
+<p>There are lots of ways to extend this model. For example, you could allow each group to have its own observation standard deviation by putting a distribution on <span class="math inline">\(\theta\)</span>. Or you could model the mean of each group as a linear model of some covariates (e.g., a GLMM). The flexibility of the hierarchical concept is what makes it so useful.</p>
 </div>
 
 </main>
