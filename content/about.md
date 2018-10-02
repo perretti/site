@@ -18,4 +18,4 @@ Some topics I have worked on:
 - State-space models
 - Time series analysis
 
-A list of my publications can be found in my [CV](https://github.com/perretti/site/).
+A list of my publications can be found in my [CV](https://github.com/perretti/site/blob/master/static/cv_pdf/perretti_cv.pdf) and on [Google Scholar](https://scholar.google.com/citations?user=U6llh8UAAAAJ&hl=en&oi=sra).
