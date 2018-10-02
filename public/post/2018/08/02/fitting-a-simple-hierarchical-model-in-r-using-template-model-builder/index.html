@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fitting a simple hierarchical model in R using Template Model Builder | Charles Perretti</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  </head>
+
+  <body>
+    <nav>
+    <ul class="menu">
+      
+      <li><a href="/">Home</a></li>
+      
+      <li><a href="/about/">About</a></li>
+      
+      <li><a href="/categories/">Categories</a></li>
+      
+      <li><a href="/tags/">Tags</a></li>
+      
+    </ul>
+    <hr/>
+    </nav>
+
+<div class="article-meta">
+<h1><span class="title">Fitting a simple hierarchical model in R using Template Model Builder</span></h1>
+<h2 class="author">Charles Perretti</h2>
+<h2 class="date">2018/08/02</h2>
+</div>
+
+<main>
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>This is an example of how to fit a simple hierarchical model in R using Template Model Builder (<a href="https://github.com/kaskr/adcomp">TMB</a>). I’ll describe why you might want to use a hierarchical model, then I’ll show how to code it up and fit it in TMB. I won’t go too deep into the mechanics of TMB (full documentation can be found <a href="https://kaskr.github.io/adcomp/_book/Introduction.html">here</a>), instead I’ll focus on introducing the idea of hierarchical modelling and how to fit one such model in TMB.</p>
+<p>Let’s start with why you might want to use a hierarchical model.</p>
+<p>Imagine we have a bunch of field sites and we want to estimate the mean of some variable at each of those sites. We take multiple samples from each site, and we’re going to use those samples to calculate our means. Now we could just average the samples from each site to get their mean, but that would ignore the fact that the sites all share some characteristics in common. On the other extreme, we could just pool all of the data together and calculate one mean for all the groups, but that would ignore the fact that each site is somewhat unique. We should be able to get the best estimates by “partially pooling” information across sites. This sharing of information is the central advantage of hierarchical models. The trick is to figure out how much pooling to do. Fortunately the model figures this out for us.</p>
+<p>Here is a simple example. Let’s say the observations from each field site are normally distributed about their true site mean, and the sites means themselves are normally distributed about some global mean. In other words, the site means are a random effect. That is, the observations come from the following hierarchical model:</p>
+<p><span class="math display">\[Y_{i,a} \sim N(\mu_a, \theta)\]</span> <span class="math display">\[\mu_a \sim N(\mu, \sigma)\]</span></p>
+<p>Where <span class="math inline">\(Y_{i,a}\)</span> is observation <span class="math inline">\(i\)</span> in site <span class="math inline">\(a\)</span>, which is normally distributed about the site mean <span class="math inline">\(\mu_a\)</span>, and each site mean is itself normally distributed about the global mean <span class="math inline">\(\mu\)</span>.</p>
+<p>Importantly, the site means all come from the same normal distribution, and this acts to shrink their estimates towards the global mean <span class="math inline">\(\mu\)</span>. The value of <span class="math inline">\(\sigma\)</span> determines the amount of pooling, or shrinking of the estimates toward the global mean. If <span class="math inline">\(\sigma\)</span> is large, then the site means are allowed to be very different from each other, and therefore the pooling and shrinkage is weak. On the other hand, if <span class="math inline">\(\sigma\)</span> is small then pooling and shrinkage is strong, and the site means will be quite similar. The model will find the value of <span class="math inline">\(\sigma\)</span> that maximizes the likelihood of the data, so you don’t have to worry about specifying the amount of pooling yourself.</p>
+</div>
+<div id="simulation" class="section level2">
+<h2>Simulation</h2>
+<p>Next let’s simulate some data from this hierarchical model, just to see what it looks like. Then we’ll code it up in TMB and fit it to the simulated data.</p>
+<pre class="r"><code># Load required packages
+library(ggplot2) # For plots
+library(dplyr) # For data manipulation
+
+set.seed(12345) # For reproducibility
+
+# Settings for sites
+n_sites &lt;- 10
+n_obs_per_site &lt;- 100
+sd_site &lt;- 10
+
+# Settings for global distribution
+global_mean &lt;- 100
+sd_global &lt;- 20
+
+# Expectation for each site is normal around the global mean
+site_mean_a &lt;- rnorm(mean = global_mean, 
+                      sd = sd_global, 
+                      n = n_sites)
+
+# Expectation for each sample is normal around the site mean
+site_obs_ia &lt;- rnorm(mean = rep(site_mean_a, each = n_obs_per_site),
+                      sd = sd_site,
+                      n = n_sites * n_obs_per_site)</code></pre>
+<p>We’ve set up the model to have 10 sites with 100 observations per site, and we’ve chosen parameter values for the global mean (global_mean &lt;- 100) the standard deviation of the site means (sd_global &lt;- 20), and the standard deviation of the observations from each site (sd_site &lt;- 10).</p>
+<p>Here is a plot of the data:</p>
+<p><img src="/post/simple_hierarchical_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<p>The observations for each site are shown clustered around their site mean in red. The scatter around each mean is normally distributed, and if we simulated many sites and plotted a histogram of the site means we would see that they are normally distributed around the global mean <span class="math inline">\(\mu\)</span>.</p>
+</div>
+<div id="fit-the-model-in-tmb" class="section level2">
+<h2>Fit the model in TMB</h2>
+<p>Next let’s code up this model in TMB so we can fit it to the simulated data. The full TMB file can be viewed <a href="https://github.com/perretti/posts/tree/master/simple_hierarchical">here</a>. I’ll break it down into chunks below.</p>
+<p>The first part of the TMB file links the TMB libraries and defines the data and parameters.</p>
+<pre class="r"><code>writeLines(readLines(&quot;simple_hierarchical.cpp&quot;)[1:16])</code></pre>
+<pre><code>#include &lt;TMB.hpp&gt;
+template&lt;class Type&gt;
+Type objective_function&lt;Type&gt;::operator() ()
+{
+  // Data
+  DATA_VECTOR(site_obs_ia);
+  DATA_IVECTOR(site_index_i);
+  DATA_SCALAR(log_sd_site);
+  
+  
+  // Parameters
+  PARAMETER_VECTOR(site_mean_a);
+  PARAMETER(global_mean);
+  PARAMETER(log_sd_global);
+  
+  </code></pre>
+<p>The standard deviation parameters (<code>sd_global</code> and <code>sd_site</code>) are input as logged values. If we didn’t do this then the optimizer might try negative values for these parameters which would lead to numerical problems. By logging the standard deviations the optimizer is free to try negative values as these will just be converted to small positive values after exponentiating.</p>
+<p>Next we initialize the objective function at zero (labeled “jnll” for joint negative log-likelihood), and define the probability of the site means and the observations.</p>
+<pre class="r"><code>writeLines(readLines(&quot;simple_hierarchical.cpp&quot;)[17:37])</code></pre>
+<pre><code>  // Objective function
+  Type jnll = 0;
+  
+  Type sd_global = exp(log_sd_global);
+  
+  // Probability of site means
+  int n_site = site_mean_a.size();
+  for( int s = 0; s &lt; n_site; s++) {
+    jnll -= dnorm(site_mean_a(s),
+                  global_mean, 
+                  sd_global, true);
+  }
+  
+  // Probability of observations
+  Type sd_site = exp(log_sd_site);
+  int n_site_obs = site_obs_ia.size();
+  for(int i = 0; i &lt; n_site_obs; i++) {
+    jnll -= dnorm(site_obs_ia(i), 
+                  site_mean_a(site_index_i(i)),
+                  sd_site, true);
+  }</code></pre>
+<p>At the end of the file we ask TMB to report the parameter estimates and uncertainties for the global mean, global standard deviation, and site means. We also report the value of the function we are asking TMB to minimize (the joint negative log-likelihood).</p>
+<pre class="r"><code>writeLines(readLines(&quot;simple_hierarchical.cpp&quot;)[38:46])</code></pre>
+<pre><code>  
+  // Reporting
+  ADREPORT(global_mean);
+  ADREPORT(sd_global);
+  ADREPORT(site_mean_a);
+  
+  
+  return jnll;
+}</code></pre>
+<p>Now that we have the model in TMB we can go ahead and fit it to the simulated data. We do this in R.</p>
+<p>First we compile the model so it’s ready to be used.</p>
+<pre class="r"><code># Compile model
+library(TMB)
+Version &lt;- &quot;simple_hierarchical&quot;
+compile( paste0(Version,&quot;.cpp&quot;) )</code></pre>
+<p>Then we arrange the data and parameters for input into TMB. When we input the list of parameters we also give their initial values of the optimization routine.</p>
+<pre class="r"><code># Setup data
+Data &lt;- list(&quot;site_obs_ia&quot; = site_obs_ia,
+             &quot;site_index_i&quot; = rep((1:n_sites) - 1, each = n_obs_per_site),
+             &quot;log_sd_site&quot; = log(sd_site))
+# Setup parameters and starting values
+Parameters &lt;- list(&quot;global_mean&quot; = 0,
+                   &quot;log_sd_global&quot; = 0,
+                   &quot;site_mean_a&quot; = rep(0, n_sites))</code></pre>
+<p>Next we build the TMB object, and fit it using a built-in optimizer. The most important thing to notice in this block of code is the setting <code>random = &quot;site_mean_a&quot;</code>. This is telling TMB to estimate the distribution of site means as a random effect, which it does using the Laplace approximation. In this simple example you can actually fit the model without that setting, but the Laplace approximation becomes important in more complicated models as it allows you to very quickly fit models with many parameters.</p>
+<pre class="r"><code># Build object
+dyn.load(dynlib(Version))
+Obj &lt;- MakeADFun(data = Data, 
+                 parameters = Parameters,
+                 random = &quot;site_mean_a&quot;)
+
+# Optimize
+Opt &lt;- TMBhelper::Optimize(obj = Obj, newtonsteps = 1)</code></pre>
+<p>Next we extract the parameter estimates and standard errors.</p>
+<pre class="r"><code># Report out the ADREPORT vars
+Report_sd &lt;- TMB::sdreport(Obj)</code></pre>
+</div>
+<div id="results" class="section level2">
+<h2>Results</h2>
+<p>Now let’s inspect the parameter estimates and compare them to the true values from the simulation. First let’s plot the estimated site means against the true means. <img src="/post/simple_hierarchical_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<p>The blue points are the estimated site means and 95% confidence intervals. The true sites means in red are mostly within the 95% interval of the estimated means, a good sign.</p>
+<p>Now let’s see how well we estimated the global mean and standard deviation. <img src="/post/simple_hierarchical_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p>Both the mean and the standard deviation of the global distribution are within the 95% confidence interval of the parameter estimates which is another indication that the model is working as expected.</p>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>Hopefully this was a helpful introduction to hierarchical modelling and TMB. There are a lot of ways to extend this simple model. For example, you could allow each group to have its own observation standard deviation by putting a distribution on <span class="math inline">\(\theta\)</span>. Or you could model the mean of each group as a linear model of some covariates (e.g., a GLMM). The flexibility of the hierarchical concept is what makes it so useful.</p>
+</div>
+
+</main>
+
+  <footer>
+  <script src="//yihui.name/js/math-code.js"></script>
+<script async src="//cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+
+<script async src="//yihui.name/js/center-img.js"></script>
+
+  
+  <hr/>
+  <a href="https://github.com/perretti">Github</a> | <a href="https://twitter.com/charlieperretti">Twitter</a>
+  
+  </footer>
+  </body>
+</html>
+
