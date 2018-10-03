@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1538576463690.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3308532559",
+    "id" : "1A50316C",
+    "lastKnownWriteTime" : 1538576915,
+    "last_content_update" : 1538576915019,
+    "path" : "~/Projects/site/in_progress/missing_values.Rmd",
+    "project_path" : "in_progress/missing_values.Rmd",
+    "properties" : {
+        "cursorPosition" : "15,0",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}
