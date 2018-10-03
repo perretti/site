@@ -214,5 +214,5 @@ ggplot(df2plot, aes(y = variable)) +
 
 Both the mean and the standard deviation of the global distribution are within the 95% confidence interval of the parameter estimates which is another indication that the model is working as expected.
 
-There are lots of ways to extend this model. For example, you could allow each group to have its own observation standard deviation by putting a distribution on $\theta$. Or you could model the mean of each group as a linear model of some covariates (e.g., a GLMM). The flexibility of the hierarchical concept is what makes it so useful. 
+There are lots of ways to extend this model. For example, you could allow each group to have a unique observation variance by putting a distribution on $\theta$. Or you could model the mean of each group as a linear model of some covariates (e.g., a GLMM). The flexibility of the hierarchical concept is what makes it so useful.
 
