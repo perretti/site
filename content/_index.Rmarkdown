@@ -6,6 +6,7 @@ title: Home
 
 
 
-# Charles Perretti
+# Charles Perretti's Blog
+## Statistics and Machine Learning
 
 
