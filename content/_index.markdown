@@ -7,6 +7,6 @@ title: Home
 
 
 # Charles Perretti's Blog
-## Statistics and Machine Learning
+## Statistics and Probablistic Machine Learning
 
 

@@ -6,17 +6,17 @@
     <description>Recent content in TMB on Charles Perretti</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 02 Aug 2018 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Sun, 16 Sep 2018 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/categories/tmb/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
       <title>Fitting a simple hierarchical model in R using Template Model Builder</title>
-      <link>/post/2018/08/02/fitting-a-simple-hierarchical-model-in-r-using-template-model-builder/</link>
-      <pubDate>Thu, 02 Aug 2018 00:00:00 +0000</pubDate>
+      <link>/post/2018/09/16/fitting-a-simple-hierarchical-model-in-r-using-template-model-builder/</link>
+      <pubDate>Sun, 16 Sep 2018 00:00:00 +0000</pubDate>
       
-      <guid>/post/2018/08/02/fitting-a-simple-hierarchical-model-in-r-using-template-model-builder/</guid>
+      <guid>/post/2018/09/16/fitting-a-simple-hierarchical-model-in-r-using-template-model-builder/</guid>
       <description>Introduction This is an example of how to fit a simple hierarchical model in R using Template Model Builder (TMB). I’ll describe why you might want to use a hierarchical model, then I’ll show how to code it up and fit it in TMB. I won’t go too deep into the mechanics of TMB (full documentation can be found here), instead I’ll focus on introducing the idea of hierarchical modelling and how to fit one such model in TMB.</description>
     </item>
     
