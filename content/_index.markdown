@@ -6,7 +6,6 @@ title: Home
 
 
 
-# Charles Perretti's Blog
-## Statistics and Probablistic Machine Learning
+# Applied Statistics Case Studies
 
 
