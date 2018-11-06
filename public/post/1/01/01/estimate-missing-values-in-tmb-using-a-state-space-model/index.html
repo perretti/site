@@ -27,7 +27,7 @@
 
 <div class="article-meta">
 <h1><span class="title">Estimate missing values in TMB using a state-space model</span></h1>
-<h2 class="author">Charles Perretti</h2>
+
 
 </div>
 
@@ -60,7 +60,7 @@ points(observations_i)</code></pre>
 <p>We want to recover the true state (the line) given all we have are the observations (the points). We’ll do that by fitting a random walk state-space model in TMB. Before we look at the TMB code I’ll breifly describe the concept behind estimating missing values in a state-space model.</p>
 <p>I mentioned that the state-space model has a process model component and an observation model component. Maximizing the joint likelihood of those two components is how we get our estimates. In years without observations, the procedure is the same except there is no observation likelihood contribution; there is only a process model contribution. The process model will give us an estimate of the state even when we don’t have any observations, but the uncertainty of that estimate will increase with the number of consecutive missing values because we don’t have any observations to anchor it.</p>
 <p>How should we expect the uncertainty to change with each addditional consecutive missing value? For a random walk, each random step is independent, so the variance of possible states just sums over time (i.e., the variance <span class="math inline">\(t\)</span> years since the last observation is <span class="math inline">\(t\sigma^2\)</span>). Therefore, when we have a string of missing values, the confidence interval of the estimate should expand as we get further from the closest observation.</p>
-<p>Okay, so we sort of know what to expect. Next, let’s take a look at the TMB code that we’ll use to actually fit the model, and then we’ll look at the result (all code can be viewed [here] <INSERT LINK>).</p>
+<p>Okay, so we sort of know what to expect. Next, let’s take a look at the TMB code that we’ll use to actually fit the model, and then we’ll look at the result (all code can be viewed [here] <a href="https://github.com/perretti/site/blob/master/content/post/missing_values.cpp" class="uri">https://github.com/perretti/site/blob/master/content/post/missing_values.cpp</a>).</p>
 <p>The first line of the TMB file links the TMB libraries.</p>
 <pre class="r"><code>writeLines(readLines(&quot;missing_values.cpp&quot;)[1])</code></pre>
 <pre><code>#include &lt;TMB.hpp&gt;</code></pre>

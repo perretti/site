@@ -1,17 +1,37 @@
----
-title: "Estimate missing values in TMB using a state-space model"
-date: "2018-10-03"
-categories:
-  - R
-  - TMB
-tags:
-  - state-space
-  - missing values
-output: html_document
----
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Estimate missing values in TMB using a state-space model | Charles Perretti</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  </head>
 
+  <body>
+    <nav>
+    <ul class="menu">
+      
+      <li><a href="/">Home</a></li>
+      
+      <li><a href="/about/">About</a></li>
+      
+      <li><a href="/categories/">Categories</a></li>
+      
+      <li><a href="/tags/">Tags</a></li>
+      
+    </ul>
+    <hr/>
+    </nav>
 
+<div class="article-meta">
+<h1><span class="title">Estimate missing values in TMB using a state-space model</span></h1>
 
+<h2 class="date">2018/10/03</h2>
+</div>
+
+<main>
 <p>When working with time series we often run into the problem of missing observations. Here I’ll walk through how to estimate missing observations and their uncertainties using a state-space model in R using Template Model Builder (<a href="https://github.com/kaskr/adcomp">TMB</a>).</p>
 <p>I’ll use a random-walk state-space model (also known as a Kalman Filter) to estimate missing values, so let’s start off by describing that model. Every state-space model is composed of a two parts: (1) a process model and (2) an observation model. The process model describes how the true state of the thing you’re modelling changes over time. The observation model describes how the true state is observed with error. In a random walk state-space model the process model is a random walk, and in its simplest form, the observation model is just the true state plus random error. In equations that is,</p>
 <p><span class="math display">\[x_{t} = x_{t-1} + \epsilon_t\]</span></p>
@@ -147,3 +167,20 @@ Report_sd &lt;- TMB::sdreport(Obj)</code></pre>
 <p><img src="/post/missing_values_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
 <p>We see that the 95% confidence interval of the estimate (in blue) captures the true value of the error standard deviations, which means the model is doing what we expect.</p>
 <p>Keep in mind that this is a best-case scenario since we’re using the same model to estimate the missing values as the one that generated the data. In real life this is almost never the case, but the general procedure outlined here can be used with any state-space model. You can experiment with different models and see which one fits your data best, perhaps using information criterion or cross-validation.</p>
+
+</main>
+
+  <footer>
+  <script src="//yihui.name/js/math-code.js"></script>
+<script async src="//cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+
+<script async src="//yihui.name/js/center-img.js"></script>
+
+  
+  <hr/>
+  <a href="https://github.com/perretti">Github</a> | <a href="https://twitter.com/charlieperretti">Twitter</a>
+  
+  </footer>
+  </body>
+</html>
+

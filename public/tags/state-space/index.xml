@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>TMB on Charles Perretti</title>
-    <link>/categories/tmb/</link>
-    <description>Recent content in TMB on Charles Perretti</description>
+    <title>state-space on Charles Perretti</title>
+    <link>/tags/state-space/</link>
+    <description>Recent content in state-space on Charles Perretti</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Wed, 03 Oct 2018 00:00:00 +0000</lastBuildDate>
     
-	<atom:link href="/categories/tmb/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="/tags/state-space/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
@@ -19,15 +19,6 @@
       <guid>/post/2018/10/03/estimate-missing-values-in-tmb-using-a-state-space-model/</guid>
       <description>When working with time series we often run into the problem of missing observations. Here I’ll walk through how to estimate missing observations and their uncertainties using a state-space model in R using Template Model Builder (TMB).
 I’ll use a random-walk state-space model (also known as a Kalman Filter) to estimate missing values, so let’s start off by describing that model. Every state-space model is composed of a two parts: (1) a process model and (2) an observation model.</description>
-    </item>
-    
-    <item>
-      <title>Fitting a simple hierarchical model in R using Template Model Builder</title>
-      <link>/post/2018/09/16/fitting-a-simple-hierarchical-model-in-r-using-template-model-builder/</link>
-      <pubDate>Sun, 16 Sep 2018 00:00:00 +0000</pubDate>
-      
-      <guid>/post/2018/09/16/fitting-a-simple-hierarchical-model-in-r-using-template-model-builder/</guid>
-      <description>Introduction This is an example of how to fit a simple hierarchical model in R using Template Model Builder (TMB). I’ll describe why you might want to use a hierarchical model, then I’ll show how to code it up and fit it in TMB. I won’t go too deep into the mechanics of TMB (full documentation can be found here), instead I’ll focus on introducing the idea of hierarchical modelling and how to fit one such model in TMB.</description>
     </item>
     
   </channel>
