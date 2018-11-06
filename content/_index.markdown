@@ -6,6 +6,6 @@ title: Home
 
 
 
-# Just Another Stats Blog
+# Charles Perretti's Stats Blog
 
 

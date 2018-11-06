@@ -1,0 +1,150 @@
+---
+title: "Estimate missing values in TMB using a state-space model"
+author: "Charles Perretti"
+date: "10/3/2018"
+categories:
+  - R
+  - TMB
+tags:
+  - state-space
+  - missing values
+output: html_document
+---
+
+
+
+<p>When working with time series we often run into the problem of missing observations. Here I’ll walk through how to estimate missing observations and their uncertainties using a state-space model in R using Template Model Builder (<a href="https://github.com/kaskr/adcomp">TMB</a>).</p>
+<p>I’ll use a random-walk state-space model (also known as a Kalman Filter) to estimate missing values, so let’s start off by describing that model. Every state-space model is composed of a two parts: (1) a process model and (2) an observation model. The process model describes how the true state of the thing you’re modelling changes over time. The observation model describes how the true state is observed with error. In a random walk state-space model the process model is a random walk, and in its simplest form, the observation model is just the true state plus random error. In equations that is,</p>
+<p><span class="math display">\[x_{t} = x_{t-1} + \epsilon_t\]</span></p>
+<p><span class="math display">\[\epsilon_t \sim N(0, 1)\]</span> <span class="math display">\[y_t = x_t + \omega_t\]</span> <span class="math display">\[\omega_t \sim N(0, 1)\]</span> Where <span class="math inline">\(x_t\)</span> is the true state at time <span class="math inline">\(t\)</span>, <span class="math inline">\(y_t\)</span> is the observed state, and I’ve defined <span class="math inline">\(\epsilon\)</span> and <span class="math inline">\(\omega\)</span> as standard normal random variables. At each time step the model moves forward in time randomly according to <span class="math inline">\(\epsilon\)</span> (commonly called process error), and each true state is observed with error <span class="math inline">\(\omega\)</span> (called observation error). The goal of the state-space model is to estimate the true states (<span class="math inline">\(x\)</span>), when all we observe are the observations (<span class="math inline">\(y\)</span>).</p>
+<p>Next, let’s simulate this model to see what it looks like.</p>
+<pre class="r"><code>set.seed(321) # for reproducibility
+
+nT &lt;- 100 # length of time series
+true_states_i &lt;- vector(mode = &quot;numeric&quot;, length = nT)
+true_states_i[1] &lt;- rnorm(n = 1) # intial condition
+for (i in 2:nT) {
+  true_states_i[i] &lt;- true_states_i[i-1] + rnorm(n = 1) # step forward with process error
+}
+
+observations_i &lt;- true_states_i + rnorm(n = length(true_states_i)) # add observation error
+
+# plot it 
+plot(true_states_i, xlab = &quot;Year&quot;, ylab = &quot;Value&quot;, type = &quot;l&quot;)
+points(observations_i)</code></pre>
+<p><img src="/post/missing_values_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+<p>Now our goal is to show how to estimate missing values so let’s remove observations from year 20 to 40.</p>
+<pre class="r"><code>observations_i[20:40] &lt;- NA
+plot(true_states_i, xlab = &quot;Year&quot;, ylab = &quot;Value&quot;, type = &quot;l&quot;)
+points(observations_i)</code></pre>
+<p><img src="/post/missing_values_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<p>We want to recover the true state (the line) given all we have are the observations (the points). We’ll do that by fitting a random walk state-space model in TMB. Before we look at the TMB code I’ll breifly describe the concept behind estimating missing values in a state-space model.</p>
+<p>I mentioned that the state-space model has a process model component and an observation model component. Maximizing the joint likelihood of those two components is how we get our estimates. In years without observations, the procedure is the same except there is no observation likelihood contribution; there is only a process model contribution. The process model will give us an estimate of the state even when we don’t have any observations, but the uncertainty of that estimate will increase with the number of consecutive missing values because we don’t have any observations to anchor it.</p>
+<p>How should we expect the uncertainty to change with each addditional consecutive missing value? For a random walk, each random step is independent, so the variance of possible states just sums over time (i.e., the variance <span class="math inline">\(t\)</span> years since the last observation is <span class="math inline">\(t\sigma^2\)</span>). Therefore, when we have a string of missing values, the confidence interval of the estimate should expand as we get further from the closest observation.</p>
+<p>Okay, so we sort of know what to expect. Next, let’s take a look at the TMB code that we’ll use to actually fit the model, and then we’ll look at the result (all code can be viewed [here] <INSERT LINK>).</p>
+<p>The first line of the TMB file links the TMB libraries.</p>
+<pre class="r"><code>writeLines(readLines(&quot;missing_values.cpp&quot;)[1])</code></pre>
+<pre><code>#include &lt;TMB.hpp&gt;</code></pre>
+<p>The next bit of code is actually critical for estimating missing values. It determines whether a particular observation is missing (is NA), and this is later used to skip that observation when evaluating the observation likelihood.</p>
+<pre class="r"><code>writeLines(readLines(&quot;missing_values.cpp&quot;)[2:7])</code></pre>
+<pre><code>
+// Function to identify missing values
+template&lt;class Type&gt;
+bool isNA(Type x){
+  return R_IsNA(asDouble(x));
+}</code></pre>
+<p>Next we read in the data and define the parameters. Here I am treating the estimates of the true state, the process variance, and the observation variance as free parameters.</p>
+<pre class="r"><code>writeLines(readLines(&quot;missing_values.cpp&quot;)[8:19])</code></pre>
+<pre><code>
+template&lt;class Type&gt;
+Type objective_function&lt;Type&gt;::operator() ()
+{
+  // Data
+  DATA_VECTOR(observations_i);
+  
+  // Parameters
+  PARAMETER(log_sigma_pro);
+  PARAMETER(log_sigma_obs);
+  PARAMETER_VECTOR(estimates_i);</code></pre>
+<p>The variance parameters are input on the log-scale to allow for negative values (which helps the optimizer). So they’re exponentiated here.</p>
+<pre class="r"><code>writeLines(readLines(&quot;missing_values.cpp&quot;)[20:21])</code></pre>
+<pre><code>  Type sigma_pro = exp(log_sigma_pro);
+  Type sigma_obs = exp(log_sigma_obs);</code></pre>
+<p>Next we define the joint negative log-likelihood to be minimized by TMB, and we evaluate the observation likelihood for the initial condition.</p>
+<pre class="r"><code>writeLines(readLines(&quot;missing_values.cpp&quot;)[23:34])</code></pre>
+<pre><code>  // Objective function
+  Type jnll = 0;
+
+  
+  // Probability of initial observation
+  if(!isNA(observations_i(0))){
+    jnll -= dnorm(observations_i(0),
+                  estimates_i(0),
+                  sigma_obs,
+                  true);
+  }
+  </code></pre>
+<p>Then we add that to the negative log-likelihood of the process model.</p>
+<pre class="r"><code>writeLines(readLines(&quot;missing_values.cpp&quot;)[35:44])</code></pre>
+<pre><code>  
+  // Process model likelihood
+  int n_i = estimates_i.size();
+  for( int i = 1; i &lt; n_i; i++) {
+    jnll -= dnorm(estimates_i(i),
+                  estimates_i(i-1),
+                  sigma_pro,
+                  true);
+  }
+  </code></pre>
+<p>And finally add that to the negative log-likelihood of the observation model.</p>
+<pre class="r"><code>writeLines(readLines(&quot;missing_values.cpp&quot;)[45:53])</code></pre>
+<pre><code>  // Observation model likelihood 
+  for( int i = 1; i &lt; n_i; i++) {
+    if(!isNA(observations_i(i))){
+      jnll -= dnorm(observations_i(i),
+                    estimates_i(i),
+                    sigma_obs, true);
+    }
+  }
+  </code></pre>
+<p>To wrap it up we report out our parameter estimates and the joint negative log-likelihood.</p>
+<pre class="r"><code>writeLines(readLines(&quot;missing_values.cpp&quot;)[54:60])</code></pre>
+<pre><code>  // Reporting
+  ADREPORT(sigma_pro);
+  ADREPORT(sigma_obs);
+  ADREPORT(estimates_i);
+  
+  return jnll;
+}</code></pre>
+<p>Now that we’ve gone through the TMB code, let’s go ahead and fit the model to the data we generated.</p>
+<pre class="r"><code># Compile model
+library(TMB)
+
+Version &lt;- &quot;missing_values&quot;
+compile( paste0(Version,&quot;.cpp&quot;) )
+
+# Setup data
+Data &lt;- list(&quot;observations_i&quot; = observations_i)
+
+# Setup parameters and starting values
+Parameters &lt;- list(&quot;estimates_i&quot; = rep(0, times = length(observations_i)),
+                   &quot;log_sigma_pro&quot; = 0,
+                   &quot;log_sigma_obs&quot; = 0)
+
+# Build object
+dyn.load(dynlib(Version))
+Obj &lt;- MakeADFun(data = Data, 
+                 parameters = Parameters,
+                 random = &quot;estimates_i&quot;)
+
+# Optimize
+Opt &lt;- TMBhelper::Optimize(obj = Obj, newtonsteps = 1)
+
+# Report out the ADREPORT vars
+Report_sd &lt;- TMB::sdreport(Obj)</code></pre>
+<p>And finally, let’s plot the model estimate and 95% confidence interval against the original data. <img src="/post/missing_values_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p>The estimate closely tracks the true state when there is data. When there isn’t data, the model just puts a straight line between the two endpoint estimates. This makes sense because the model doesn’t have any information in between the endpoints, and there is nothing in the model that would suggest any particular pattern should take place (it’s a random walk after all). Importantly, the uncertainty associated with the estimate increases as we get futher away from the observations. This also makes sense because the variance of a random walk increases over time, therefore the range of possible states that could occur in the missing-data region also increases as we get futher from the data.</p>
+<p>And just to be thorough, let’s take a look at how well the model estimated the variance parameters of the process and observation error (which are both 1 in the data-generating model).</p>
+<p><img src="/post/missing_values_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+<p>We see that the 95% confidence interval of the estimate (in blue) captures the true value of the error standard deviations, which means the model is doing what we expect.</p>
+<p>Keep in mind that this is a best-case scenario since we’re using the same model to estimate the missing values as the one that generated the data. In real life this is almost never the case, but the general procedure outlined here can be used with any state-space model. You can experiment with different models and see which one fits your data best, perhaps using information criterion or cross-validation.</p>

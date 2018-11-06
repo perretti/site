@@ -6,17 +6,26 @@
     <description>Recent content in R on Charles Perretti</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 16 Sep 2018 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/categories/r/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
-      <title>Fitting a simple hierarchical model in R using Template Model Builder</title>
-      <link>/post/2018/09/16/fitting-a-simple-hierarchical-model-in-r-using-template-model-builder/</link>
-      <pubDate>Sun, 16 Sep 2018 00:00:00 +0000</pubDate>
+      <title>Estimate missing values in TMB using a state-space model</title>
+      <link>/post/1/01/01/estimate-missing-values-in-tmb-using-a-state-space-model/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>/post/2018/09/16/fitting-a-simple-hierarchical-model-in-r-using-template-model-builder/</guid>
+      <guid>/post/1/01/01/estimate-missing-values-in-tmb-using-a-state-space-model/</guid>
+      <description>When working with time series we often run into the problem of missing observations. Here I’ll walk through how to estimate missing observations and their uncertainties using a state-space model in R using Template Model Builder (TMB).
+I’ll use a random-walk state-space model (also known as a Kalman Filter) to estimate missing values, so let’s start off by describing that model. Every state-space model is composed of a two parts: (1) a process model and (2) an observation model.</description>
+    </item>
+    
+    <item>
+      <title>Fitting a simple hierarchical model in R using Template Model Builder</title>
+      <link>/post/1/01/01/fitting-a-simple-hierarchical-model-in-r-using-template-model-builder/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/post/1/01/01/fitting-a-simple-hierarchical-model-in-r-using-template-model-builder/</guid>
       <description>Introduction This is an example of how to fit a simple hierarchical model in R using Template Model Builder (TMB). I’ll describe why you might want to use a hierarchical model, then I’ll show how to code it up and fit it in TMB. I won’t go too deep into the mechanics of TMB (full documentation can be found here), instead I’ll focus on introducing the idea of hierarchical modelling and how to fit one such model in TMB.</description>
     </item>
     

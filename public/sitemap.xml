@@ -3,11 +3,6 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>/post/2018/09/16/fitting-a-simple-hierarchical-model-in-r-using-template-model-builder/</loc>
-    <lastmod>2018-09-16T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
     <loc>/about/</loc>
   </url>
   
@@ -17,25 +12,29 @@
   </url>
   
   <url>
+    <loc>/post/1/01/01/estimate-missing-values-in-tmb-using-a-state-space-model/</loc>
+  </url>
+  
+  <url>
+    <loc>/post/1/01/01/fitting-a-simple-hierarchical-model-in-r-using-template-model-builder/</loc>
+  </url>
+  
+  <url>
     <loc>/</loc>
-    <lastmod>2018-09-16T00:00:00+00:00</lastmod>
   </url>
   
   <url>
     <loc>/post/</loc>
-    <lastmod>2018-09-16T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>/categories/r/</loc>
-    <lastmod>2018-09-16T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>/categories/tmb/</loc>
-    <lastmod>2018-09-16T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   
@@ -46,7 +45,16 @@
   
   <url>
     <loc>/tags/hierarchical/</loc>
-    <lastmod>2018-09-16T00:00:00+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/missing-values/</loc>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/state-space/</loc>
     <priority>0</priority>
   </url>
   

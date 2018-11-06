@@ -1,6 +1,7 @@
 {
-    "cursorPosition" : "49,16",
+    "cursorPosition" : "53,202",
+    "ignored_words" : "github,kaskr,adcomp,Kalman,exponentiated\n",
     "last_setup_crc32" : "",
-    "scrollLine" : "46",
+    "scrollLine" : "48",
     "tempName" : "Untitled1"
 }

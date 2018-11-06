@@ -1,0 +1,195 @@
+---
+title: "Estimate missing values in TMB using a state-space model"
+author: "Charles Perretti"
+date: "10/3/2018"
+categories:
+  - R
+  - TMB
+tags:
+  - state-space
+  - missing values
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+When working with time series we often run into the problem of missing observations. Here I'll walk through how to estimate missing observations and their uncertainties using a state-space model in R using Template Model Builder ([TMB](https://github.com/kaskr/adcomp)).
+
+I'll use a random-walk state-space model (also known as a Kalman Filter) to estimate missing values, so let's start off by describing that model. Every state-space model is composed of a two parts: (1) a process model and (2) an observation model. The process model describes how the true state of the thing you're modelling changes over time. The observation model describes how the true state is observed with error. In a random walk state-space model the process model is a random walk, and in its simplest form, the observation model is just the true state plus random error. In equations that is,
+
+$$x_{t} = x_{t-1} + \epsilon_t$$
+
+$$\epsilon_t \sim N(0, 1)$$
+$$y_t = x_t + \omega_t$$
+$$\omega_t \sim N(0, 1)$$
+Where $x_t$ is the true state at time $t$, $y_t$ is the observed state, and I've defined $\epsilon$ and $\omega$ as standard normal random variables. At each time step the model moves forward in time randomly according to $\epsilon$ (commonly called process error), and each true state is observed with error $\omega$ (called observation error). The goal of the state-space model is to estimate the true states ($x$), when all we observe are the observations ($y$).
+
+Next, let's simulate this model to see what it looks like.
+```{r}
+set.seed(321) # for reproducibility
+
+nT <- 100 # length of time series
+true_states_i <- vector(mode = "numeric", length = nT)
+true_states_i[1] <- rnorm(n = 1) # intial condition
+for (i in 2:nT) {
+  true_states_i[i] <- true_states_i[i-1] + rnorm(n = 1) # step forward with process error
+}
+
+observations_i <- true_states_i + rnorm(n = length(true_states_i)) # add observation error
+
+# plot it 
+plot(true_states_i, xlab = "Year", ylab = "Value", type = "l")
+points(observations_i)
+```
+
+Now our goal is to show how to estimate missing values so let's remove observations from year 20 to 40.
+```{r}
+observations_i[20:40] <- NA
+plot(true_states_i, xlab = "Year", ylab = "Value", type = "l")
+points(observations_i)
+```
+
+We want to recover the true state (the line) given all we have are the observations (the points). We'll do that by fitting a random walk state-space model in TMB. Before we look at the TMB code I'll breifly describe the concept behind estimating missing values in a state-space model.
+
+I mentioned that the state-space model has a process model component and an observation model component. Maximizing the joint likelihood of those two components is how we get our estimates. In years without observations, the procedure is the same except there is no observation likelihood contribution; there is only a process model contribution. The process model will give us an estimate of the state even when we don't have any observations, but the uncertainty of that estimate will increase with the number of consecutive missing values because we don't have any observations to anchor it.
+
+How should we expect the uncertainty to change with each addditional consecutive missing value? For a random walk, each random step is independent, so the variance of possible states just sums over time (i.e., the variance $t$ years since the last observation is $t\sigma^2$). Therefore, when we have a string of missing values, the confidence interval of the estimate should expand as we get further from the closest observation.
+
+Okay, so we sort of know what to expect. Next, let's take a look at the TMB code that we'll use to actually fit the model, and then we'll look at the result (all code can be viewed [here] <INSERT LINK>).
+
+The first line of the TMB file links the TMB libraries.
+```{r, comment = NA}
+writeLines(readLines("missing_values.cpp")[1])
+```
+
+The next bit of code is actually critical for estimating missing values. It determines whether a particular observation is missing (is NA), and this is later used to skip that observation when evaluating the observation likelihood.
+
+```{r, comment = NA}
+writeLines(readLines("missing_values.cpp")[2:7])
+```
+
+Next we read in the data and define the parameters. Here I am treating the estimates of the true state, the process variance, and the observation variance as free parameters.
+```{r, comment = NA}
+writeLines(readLines("missing_values.cpp")[8:19])
+```
+
+The variance parameters are input on the log-scale to allow for negative values (which helps the optimizer). So they're exponentiated here.
+```{r, comment = NA}
+writeLines(readLines("missing_values.cpp")[20:21])
+```
+
+Next we define the joint negative log-likelihood to be minimized by TMB, and we evaluate the observation likelihood for the initial condition.
+```{r, comment = NA}
+writeLines(readLines("missing_values.cpp")[23:34])
+```
+
+Then we add that to the negative log-likelihood of the process model.
+```{r, comment = NA}
+writeLines(readLines("missing_values.cpp")[35:44])
+```
+
+And finally add that to the negative log-likelihood of the observation model.
+```{r, comment = NA}
+writeLines(readLines("missing_values.cpp")[45:53])
+```
+
+To wrap it up we report out our parameter estimates and the joint negative log-likelihood.
+```{r, comment = NA}
+writeLines(readLines("missing_values.cpp")[54:60])
+```
+
+Now that we've gone through the TMB code, let's go ahead and fit the model to the data we generated.
+```{r, results = "hide"}
+# Compile model
+library(TMB)
+
+Version <- "missing_values"
+compile( paste0(Version,".cpp") )
+
+# Setup data
+Data <- list("observations_i" = observations_i)
+
+# Setup parameters and starting values
+Parameters <- list("estimates_i" = rep(0, times = length(observations_i)),
+                   "log_sigma_pro" = 0,
+                   "log_sigma_obs" = 0)
+
+# Build object
+dyn.load(dynlib(Version))
+Obj <- MakeADFun(data = Data, 
+                 parameters = Parameters,
+                 random = "estimates_i")
+
+# Optimize
+Opt <- TMBhelper::Optimize(obj = Obj, newtonsteps = 1)
+
+# Report out the ADREPORT vars
+Report_sd <- TMB::sdreport(Obj)
+```
+
+And finally, let's plot the model estimate and 95% confidence interval against the original data.
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+# Plot estimated and observed
+library(dplyr)
+library(tidyr)
+df2plot <-
+  data.frame(Estimate = Report_sd$value,
+             estimateUpperCI = Report_sd$value + 1.96 * Report_sd$sd,
+             estimateLowerCI = Report_sd$value - 1.96 * Report_sd$sd,
+             variable = names(Report_sd$value)) %>%
+  dplyr::filter(variable == "estimates_i") %>%
+  dplyr::mutate(`True state` = true_states_i,
+                Observations = observations_i,
+                Year = 1:length(observations_i)) %>%
+  dplyr::select(-variable) %>%
+  tidyr::gather(variable, Value, -Year, -estimateUpperCI, -estimateLowerCI)
+
+
+library(ggplot2)
+(ggplot(df2plot, aes(x = Year, y = Value)) +
+  geom_point(data = dplyr::filter(df2plot, variable == "Observations"), shape = "o", size = 3.5) +
+  geom_line(data = dplyr::filter(df2plot, variable != "Observations"),
+            aes(color = variable)) +
+  geom_ribbon(aes(ymin = estimateLowerCI, ymax = estimateUpperCI), 
+              fill = "blue", color = NA, alpha = 0.2) +
+  scale_color_manual(values = c("blue", "black")) +
+  theme_bw() +
+  theme(legend.title = element_blank()))
+```
+
+The estimate closely tracks the true state when there is data. When there isn't data, the model just puts a straight line between the two endpoint estimates. This makes sense because the model doesn't have any information in between the endpoints, and there is nothing in the model that would suggest any particular pattern should take place (it's a random walk after all). Importantly, the uncertainty associated with the estimate increases as we get futher away from the observations. This also makes sense because the variance of a random walk increases over time, therefore the range of possible states that could occur in the missing-data region also increases as we get futher from the data.
+
+And just to be thorough, let's take a look at how well the model estimated the variance parameters of the process and observation error (which are both 1 in the data-generating model).
+
+```{r, echo = FALSE} 
+df2plot <-
+  data.frame(variable = "Process error sd",
+             tru = 1,
+             est = Report_sd$value["sigma_pro"],
+             sd  = Report_sd$sd[1]) %>%
+  rbind(data.frame(variable = "Observation error sd",
+                   tru = 1,
+                   est = Report_sd$value["sigma_obs"],
+                   sd  = Report_sd$sd[2]))
+
+
+ggplot(df2plot, aes(y = variable)) +
+  geom_point( aes(x = tru), color = "red", size  = 3) +
+  geom_point( aes(x = est), color = "blue", size = 3) +
+  geom_errorbarh(aes(xmin = est - 1.96*sd,
+                     xmax = est + 1.96*sd), height = 0.1, color = "blue") +
+  theme_bw() +
+  ylab("") +
+  xlab("Value") +
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 14)) +
+  xlim(0, 2)
+  
+```
+
+
+We see that the 95% confidence interval of the estimate (in blue) captures the true value of the error standard deviations, which means the model is doing what we expect. 
+
+Keep in mind that this is a best-case scenario since we're using the same model to estimate the missing values as the one that generated the data. In real life this is almost never the case, but the general procedure outlined here can be used with any state-space model. You can experiment with different models and see which one fits your data best, perhaps using information criterion or cross-validation.
