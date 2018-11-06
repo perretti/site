@@ -56,7 +56,7 @@ I mentioned that the state-space model has a process model component and an obse
 
 How should we expect the uncertainty to change with each addditional consecutive missing value? For a random walk, each random step is independent, so the variance of possible states just sums over time (i.e., the variance $t$ years since the last observation is $t\sigma^2$). Therefore, when we have a string of missing values, the confidence interval of the estimate should expand as we get further from the closest observation.
 
-Okay, so we sort of know what to expect. Next, let's take a look at the TMB code that we'll use to actually fit the model, and then we'll look at the result (all code can be viewed [here] <https://github.com/perretti/site/blob/master/content/post/missing_values.cpp>).
+Okay, so we sort of know what to expect. Next, let's take a look at the TMB code that we'll use to actually fit the model, and then we'll look at the result (the full TMB code can be viewed [here](https://github.com/perretti/site/blob/master/content/post/missing_values.cpp)).
 
 The first line of the TMB file links the TMB libraries.
 ```{r, comment = NA}
