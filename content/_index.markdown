@@ -6,6 +6,6 @@ title: Home
 
 
 
-# Applied Statistics Case Studies
+# Just Another Stats Blog
 
 
