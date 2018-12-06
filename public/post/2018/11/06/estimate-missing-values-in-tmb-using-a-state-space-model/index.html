@@ -26,14 +26,19 @@
 <div class="article-meta">
 <h1><span class="title">Estimate missing values in TMB using a state-space model</span></h1>
 
-<h2 class="date">2018/10/03</h2>
+<h2 class="date">2018/11/06</h2>
 </div>
 
 <main>
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
 <p>When working with time series we often run into the problem of missing observations. Here I’ll walk through how to estimate missing observations and their uncertainties using a state-space model in R using Template Model Builder (<a href="https://github.com/kaskr/adcomp">TMB</a>).</p>
 <p>I’ll use a random-walk state-space model (also known as a Kalman Filter) to estimate missing values, so let’s start off by describing that model. Every state-space model is composed of a two parts: (1) a process model and (2) an observation model. The process model describes how the true state of the thing you’re modelling changes over time. The observation model describes how the true state is observed with error. In a random walk state-space model the process model is a random walk, and in its simplest form, the observation model is just the true state plus random error. In equations that is,</p>
 <p><span class="math display">\[x_{t} = x_{t-1} + \epsilon_t\]</span></p>
 <p><span class="math display">\[\epsilon_t \sim N(0, 1)\]</span> <span class="math display">\[y_t = x_t + \omega_t\]</span> <span class="math display">\[\omega_t \sim N(0, 1)\]</span> Where <span class="math inline">\(x_t\)</span> is the true state at time <span class="math inline">\(t\)</span>, <span class="math inline">\(y_t\)</span> is the observed state, and I’ve defined <span class="math inline">\(\epsilon\)</span> and <span class="math inline">\(\omega\)</span> as standard normal random variables. At each time step the model moves forward in time randomly according to <span class="math inline">\(\epsilon\)</span> (commonly called process error), and each true state is observed with error <span class="math inline">\(\omega\)</span> (called observation error). The goal of the state-space model is to estimate the true states (<span class="math inline">\(x\)</span>), when all we observe are the observations (<span class="math inline">\(y\)</span>).</p>
+</div>
+<div id="simulation" class="section level2">
+<h2>Simulation</h2>
 <p>Next, let’s simulate this model to see what it looks like.</p>
 <pre class="r"><code>set.seed(321) # for reproducibility
 
@@ -58,11 +63,14 @@ points(observations_i)</code></pre>
 <p>We want to recover the true state (the line) given all we have are the observations (the points). We’ll do that by fitting a random walk state-space model in TMB. Before we look at the TMB code I’ll breifly describe the concept behind estimating missing values in a state-space model.</p>
 <p>I mentioned that the state-space model has a process model component and an observation model component. Maximizing the joint likelihood of those two components is how we get our estimates. In years without observations, the procedure is the same except there is no observation likelihood contribution; there is only a process model contribution. The process model will give us an estimate of the state even when we don’t have any observations, but the uncertainty of that estimate will increase with the number of consecutive missing values because we don’t have any observations to anchor it.</p>
 <p>How should we expect the uncertainty to change with each addditional consecutive missing value? For a random walk, each random step is independent, so the variance of possible states just sums over time (i.e., the variance <span class="math inline">\(t\)</span> years since the last observation is <span class="math inline">\(t\sigma^2\)</span>). Therefore, when we have a string of missing values, the confidence interval of the estimate should expand as we get further from the closest observation.</p>
+</div>
+<div id="fit-the-model-in-tmb" class="section level2">
+<h2>Fit the model in TMB</h2>
 <p>Okay, so we sort of know what to expect. Next, let’s take a look at the TMB code that we’ll use to actually fit the model, and then we’ll look at the result (the full TMB code can be viewed <a href="https://github.com/perretti/site/blob/master/content/post/missing_values.cpp">here</a>).</p>
 <p>The first line of the TMB file links the TMB libraries.</p>
 <pre class="r"><code>writeLines(readLines(&quot;missing_values.cpp&quot;)[1])</code></pre>
 <pre><code>#include &lt;TMB.hpp&gt;</code></pre>
-<p>The next bit of code is actually critical for estimating missing values. It determines whether a particular observation is missing (is NA), and this is later used to skip that observation when evaluating the observation likelihood.</p>
+<p>The next bit of code (found <a href="https://github.com/kaskr/adcomp/issues/59#issuecomment-62352115">here</a>) is actually critical for estimating missing values. It determines whether a particular observation is missing (is NA), and this is later used to skip that observation when evaluating the observation likelihood.</p>
 <pre class="r"><code>writeLines(readLines(&quot;missing_values.cpp&quot;)[2:7])</code></pre>
 <pre><code>
 // Function to identify missing values
@@ -159,12 +167,16 @@ Opt &lt;- TMBhelper::Optimize(obj = Obj, newtonsteps = 1)
 
 # Report out the ADREPORT vars
 Report_sd &lt;- TMB::sdreport(Obj)</code></pre>
+</div>
+<div id="results" class="section level2">
+<h2>Results</h2>
 <p>And finally, let’s plot the model estimate and 95% confidence interval against the original data. <img src="/post/missing_values_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
-<p>The estimate closely tracks the true state when there is data. When there isn’t data, the model just puts a straight line between the two endpoint estimates. This makes sense because the model doesn’t have any information in between the endpoints, and there is nothing in the model that would suggest any particular pattern should take place (it’s a random walk after all). Importantly, the uncertainty associated with the estimate increases as we get futher away from the observations. This also makes sense because the variance of a random walk increases over time, therefore the range of possible states that could occur in the missing-data region also increases as we get futher from the data.</p>
+<p>We see that the estimate closely tracks the true state when there is data. When there isn’t data, the model just puts a straight line between the two endpoint estimates. This makes sense because the model doesn’t have any information in between the endpoints, and there is nothing in the model that would suggest any particular pattern should take place (it’s a random walk after all). Importantly, the uncertainty associated with the estimate increases as we get futher away from the observations. This also makes sense because the variance of a random walk increases over time, therefore the range of possible states that could occur in the missing-data region also increases as we get futher from the data.</p>
 <p>And just to be thorough, let’s take a look at how well the model estimated the variance parameters of the process and observation error (which are both 1 in the data-generating model).</p>
 <p><img src="/post/missing_values_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
 <p>We see that the 95% confidence interval of the estimate (in blue) captures the true value of the error standard deviations, which means the model is doing what we expect.</p>
-<p>Keep in mind that this is a best-case scenario since we’re using the same model to estimate the missing values as the one that generated the data. In real life this is almost never the case, but the general procedure outlined here can be used with any state-space model. You can experiment with different models and see which one fits your data best, perhaps using information criterion or cross-validation.</p>
+<p>Keep in mind that this is a best-case scenario since we’re using the same model to estimate the missing values as the one that generated the data. In real life this is almost never the case, and you would want to try different models to see which one fits the data best, perhaps using information criterion or cross-validation. But once you’ve decided on your model, the general procedure outlined here can be used to estimate the missing values and their uncertainty.</p>
+</div>
 
 </main>
 

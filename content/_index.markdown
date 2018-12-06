@@ -6,6 +6,8 @@ title: Home
 
 
 
-# Charles Perretti's Stats Blog
+# Charles Perretti
+
+## Occasional writings on statistical methods
 
 

@@ -1,10 +1,9 @@
 ---
 title: "Estimate missing values in TMB using a state-space model"
-date: "2018-10-03"
-categories:
+date: "2018-11-06"
+tags:
   - R
   - TMB
-tags:
   - state-space
   - missing values
 output: html_document
@@ -13,6 +12,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+## Introduction
 
 When working with time series we often run into the problem of missing observations. Here I'll walk through how to estimate missing observations and their uncertainties using a state-space model in R using Template Model Builder ([TMB](https://github.com/kaskr/adcomp)).
 
@@ -24,6 +24,8 @@ $$\epsilon_t \sim N(0, 1)$$
 $$y_t = x_t + \omega_t$$
 $$\omega_t \sim N(0, 1)$$
 Where $x_t$ is the true state at time $t$, $y_t$ is the observed state, and I've defined $\epsilon$ and $\omega$ as standard normal random variables. At each time step the model moves forward in time randomly according to $\epsilon$ (commonly called process error), and each true state is observed with error $\omega$ (called observation error). The goal of the state-space model is to estimate the true states ($x$), when all we observe are the observations ($y$).
+
+## Simulation
 
 Next, let's simulate this model to see what it looks like.
 ```{r}
@@ -56,6 +58,8 @@ I mentioned that the state-space model has a process model component and an obse
 
 How should we expect the uncertainty to change with each addditional consecutive missing value? For a random walk, each random step is independent, so the variance of possible states just sums over time (i.e., the variance $t$ years since the last observation is $t\sigma^2$). Therefore, when we have a string of missing values, the confidence interval of the estimate should expand as we get further from the closest observation.
 
+## Fit the model in TMB
+
 Okay, so we sort of know what to expect. Next, let's take a look at the TMB code that we'll use to actually fit the model, and then we'll look at the result (the full TMB code can be viewed [here](https://github.com/perretti/site/blob/master/content/post/missing_values.cpp)).
 
 The first line of the TMB file links the TMB libraries.
@@ -63,7 +67,7 @@ The first line of the TMB file links the TMB libraries.
 writeLines(readLines("missing_values.cpp")[1])
 ```
 
-The next bit of code is actually critical for estimating missing values. It determines whether a particular observation is missing (is NA), and this is later used to skip that observation when evaluating the observation likelihood.
+The next bit of code (found [here](https://github.com/kaskr/adcomp/issues/59#issuecomment-62352115)) is actually critical for estimating missing values. It determines whether a particular observation is missing (is NA), and this is later used to skip that observation when evaluating the observation likelihood.
 
 ```{r, comment = NA}
 writeLines(readLines("missing_values.cpp")[2:7])
@@ -127,6 +131,7 @@ Opt <- TMBhelper::Optimize(obj = Obj, newtonsteps = 1)
 # Report out the ADREPORT vars
 Report_sd <- TMB::sdreport(Obj)
 ```
+## Results
 
 And finally, let's plot the model estimate and 95% confidence interval against the original data.
 ```{r, echo = FALSE, warning = FALSE, message = FALSE}
@@ -158,7 +163,7 @@ library(ggplot2)
   theme(legend.title = element_blank()))
 ```
 
-The estimate closely tracks the true state when there is data. When there isn't data, the model just puts a straight line between the two endpoint estimates. This makes sense because the model doesn't have any information in between the endpoints, and there is nothing in the model that would suggest any particular pattern should take place (it's a random walk after all). Importantly, the uncertainty associated with the estimate increases as we get futher away from the observations. This also makes sense because the variance of a random walk increases over time, therefore the range of possible states that could occur in the missing-data region also increases as we get futher from the data.
+We see that the estimate closely tracks the true state when there is data. When there isn't data, the model just puts a straight line between the two endpoint estimates. This makes sense because the model doesn't have any information in between the endpoints, and there is nothing in the model that would suggest any particular pattern should take place (it's a random walk after all). Importantly, the uncertainty associated with the estimate increases as we get futher away from the observations. This also makes sense because the variance of a random walk increases over time, therefore the range of possible states that could occur in the missing-data region also increases as we get futher from the data.
 
 And just to be thorough, let's take a look at how well the model estimated the variance parameters of the process and observation error (which are both 1 in the data-generating model).
 
@@ -191,4 +196,4 @@ ggplot(df2plot, aes(y = variable)) +
 
 We see that the 95% confidence interval of the estimate (in blue) captures the true value of the error standard deviations, which means the model is doing what we expect. 
 
-Keep in mind that this is a best-case scenario since we're using the same model to estimate the missing values as the one that generated the data. In real life this is almost never the case, but the general procedure outlined here can be used with any state-space model. You can experiment with different models and see which one fits your data best, perhaps using information criterion or cross-validation.
+Keep in mind that this is a best-case scenario since we're using the same model to estimate the missing values as the one that generated the data. In real life this is almost never the case, and you would want to try different models to see which one fits the data best, perhaps using information criterion or cross-validation. But once you've decided on your model, the general procedure outlined here can be used to estimate the missing values and their uncertainty.

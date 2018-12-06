@@ -1,10 +1,9 @@
 ---
-title: Fitting a simple hierarchical model in R using Template Model Builder
+title: Fit a simple hierarchical model in R using Template Model Builder
 date: '2018-09-16'
-categories:
+tags:
   - R
   - TMB
-tags:
   - hierarchical
 output: html_document
 ---

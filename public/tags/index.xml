@@ -6,9 +6,28 @@
     <description>Recent content in Tags on Charles Perretti</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
+    <lastBuildDate>Tue, 06 Nov 2018 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/tags/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>R</title>
+      <link>/tags/r/</link>
+      <pubDate>Tue, 06 Nov 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/tags/r/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>TMB</title>
+      <link>/tags/tmb/</link>
+      <pubDate>Tue, 06 Nov 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/tags/tmb/</guid>
+      <description></description>
+    </item>
     
     <item>
       <title>hierarchical</title>
@@ -22,7 +41,7 @@
     <item>
       <title>missing values</title>
       <link>/tags/missing-values/</link>
-      <pubDate>Wed, 03 Oct 2018 00:00:00 +0000</pubDate>
+      <pubDate>Tue, 06 Nov 2018 00:00:00 +0000</pubDate>
       
       <guid>/tags/missing-values/</guid>
       <description></description>
@@ -31,7 +50,7 @@
     <item>
       <title>state-space</title>
       <link>/tags/state-space/</link>
-      <pubDate>Wed, 03 Oct 2018 00:00:00 +0000</pubDate>
+      <pubDate>Tue, 06 Nov 2018 00:00:00 +0000</pubDate>
       
       <guid>/tags/state-space/</guid>
       <description></description>

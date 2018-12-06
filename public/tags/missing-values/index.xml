@@ -6,18 +6,18 @@
     <description>Recent content in missing values on Charles Perretti</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 03 Oct 2018 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Tue, 06 Nov 2018 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/tags/missing-values/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
       <title>Estimate missing values in TMB using a state-space model</title>
-      <link>/post/2018/10/03/estimate-missing-values-in-tmb-using-a-state-space-model/</link>
-      <pubDate>Wed, 03 Oct 2018 00:00:00 +0000</pubDate>
+      <link>/post/2018/11/06/estimate-missing-values-in-tmb-using-a-state-space-model/</link>
+      <pubDate>Tue, 06 Nov 2018 00:00:00 +0000</pubDate>
       
-      <guid>/post/2018/10/03/estimate-missing-values-in-tmb-using-a-state-space-model/</guid>
-      <description>When working with time series we often run into the problem of missing observations. Here I’ll walk through how to estimate missing observations and their uncertainties using a state-space model in R using Template Model Builder (TMB).
+      <guid>/post/2018/11/06/estimate-missing-values-in-tmb-using-a-state-space-model/</guid>
+      <description>Introduction When working with time series we often run into the problem of missing observations. Here I’ll walk through how to estimate missing observations and their uncertainties using a state-space model in R using Template Model Builder (TMB).
 I’ll use a random-walk state-space model (also known as a Kalman Filter) to estimate missing values, so let’s start off by describing that model. Every state-space model is composed of a two parts: (1) a process model and (2) an observation model.</description>
     </item>
     
