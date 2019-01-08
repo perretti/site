@@ -141,7 +141,7 @@ Report_sd_lmar <- TMB::sdreport(Obj_lmar)
 Notice the two calls to `MakeADFun` to set up each model. The only difference between the two is that in the simple regression (the second one), the `phi` parameter is set to 0. We do this through the `map` argument with `unbounded_phi =  factor(NA)`. This tells TMB to keep `unbounded_phi` set to its initial guess which is given in the `parameters` argument (i.e., `unbounded_phi = 0`).
 
 ## Results
-Next let's look at each regression against the true trend and observations. I'll hide the plotting code for brevity but if you're interested you can find it here <ADD LINK>.
+Next let's look at each regression against the true trend and observations. I'll hide the plotting code for brevity but if you're interested you can find it [here](https://github.com/perretti/site/blob/master/content/post/lm_ar.Rmd).
 
 ```{r, echo = FALSE}
 # Plot predicted vs observed vs true
