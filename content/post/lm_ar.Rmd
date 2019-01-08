@@ -1,0 +1,246 @@
+---
+title: "A linear regression with correlated residuals"
+date: "2019-01-08"
+tags:
+  - R
+  - TMB
+  - regression
+  - autocorrelation
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Introduction
+
+One of the central assumptions of the linear regression is that the residuals are uncorrelated. Unfortunately, this assumption is often violated in real data. As we'll see, ignoring this can lead to incorrect inferences, primarily through overconfident estimates. Here I'll demonstrate how to fit a linear regression that accounts for correlated residuals, and how the results differ from that of a linear regression without correlated residuals (which I'll call a "simple linear regression"). I'll do this in R using Template Model Builder ([TMB](https://github.com/kaskr/adcomp)).
+
+To start, let's say we have a time series that is made up of an underlying linear trend with added observation error that is correlated over time. This means that if the error is above the trend line in a particular year it tends to be above the trend in the next year, and vice versa. In equations we can represent this as,
+
+$$y_{t} = \beta_0 + \beta_1t + \omega_t$$
+
+$$\omega_t = \phi \omega_{t-1} + \epsilon_t$$
+$$\epsilon_t \sim N(0, \sigma)$$
+Where $y_t$ is the observed time series, $t$ is the time index, and $\beta_0$ and $\beta_1$ are the intercept and slope of the trend, respectively. The interesting action is in $\omega_t$. For a simple linear regression $\omega_t$ would just be normal, uncorrelated random error ($\epsilon_t$). But the $\phi \omega_{t-1}$ allows for correlated errors, where this year's error is partially determined by last year's error. The parameter $\phi$ determines the correlation of the residuals: at $\phi = 1$ the errors are perfectly positively correlated, at $\phi = 0$ the model converges to a simple linear regression, and at $\phi = -1$ the errors are perfectly negatively correlated.
+
+## Simulation
+
+Next, let's simulate an example time series with a long-term positive trend and correlated observation errors.
+```{r, message = FALSE}
+# load required libraries
+library(ggplot2)
+library(TMB)
+library(dplyr)
+
+set.seed(123) # for reproducibility
+
+n_t <- 30 # length of time series
+
+# Create trend
+Year <- 1:n_t
+b0 <- 1
+b1 <- 0.1
+trend <- b0 + b1 * Year
+
+# Create errors
+e <- vector(mode = "numeric", length = n_t) # vector for errors
+sigma <- 1 # sd of white noise component
+e[1] <- rnorm(1, sd = sigma) # error in first year
+phi <- 0.9 # autocorrelation parameter
+for (i in 2:n_t) e[i] <- phi * e[i-1] + rnorm(1, sd = sigma) # create errors
+
+# Add errors to trend
+Observation <- trend + e
+
+# Plot it
+ggplot(data.frame(Year = Year, Observation = Observation, trend = trend),
+       aes(x = Year)) +
+  geom_point(aes(y = Observation)) +
+  geom_line(aes(y = trend)) +
+  theme_bw() +
+  ylab("Observation value") +
+  theme(axis.title = element_text(size = 14))
+  
+```
+
+Here, the trend line is the true trend, not a fit. Notice that the observations tend to be above the trend line in the early years, and then below it towards the end. This is the correlated error at work. The deviations from the long-term trend are just temporary and will eventually revert back to the trend. In a real system there may be some mechanism driving the correlation, and you could try to model that explicitly. Here, however, we'll treat it as random noise and focus instead on getting an accurate estimate of the long-term trend.
+
+## Fit the model
+
+Next, let's look at the TMB model file that we'll use to fit a linear regression with correlated residuals. It begins with the usual preamble of loading the required c++ libraries.
+```{r, comment = NA}
+writeLines(readLines("lm_ar.cpp")[1:3])
+```
+Next, since the correlation of the error must be between -1 and 1, we define a function called `bound` that bounds the $\phi$ parameter between -1 and 1. Then we define the data and parameters.
+```{r, comment = NA}
+writeLines(readLines("lm_ar.cpp")[4:18])
+```
+
+The parameter $\sigma$ is strictly positive, and $\phi$ is bounded between -1 and 1, but we want TMB to be able to search over an unbounded range to avoid numerical problems. So we input them as log-transformed (`log_ar_sd`) and unbounded (`unbounded_phi`) parameters, respectively. Then we transform them to their bounded range before applying them in the model.
+
+```{r, comment = NA}
+writeLines(readLines("lm_ar.cpp")[20:22])
+```
+
+Next we generate the model fit which is just the predictions from the simple linear regression.
+```{r, comment = NA}
+writeLines(readLines("lm_ar.cpp")[25:28])
+```
+
+So far, this is identical to how you would code a simple linear regression except for defining $\phi$ and its transformation. The big difference comes next, in the likelihood. Rather than using the normal distribution to evaluate the likelihood of the data (i.e., `dnorm()`), we'll use the `AR1()` distribution. Remember that a call of `dnorm(x, 0, 1)` gives you the likelihood of the data `x` given that it follows a normal distribution with mean = 0 and sd = 1. Similarly, a call of `AR1(phi)(x)` gives you the likelihood of the data `x` given that it follows an AR1 process with correlation `phi`. Notice that the syntax is different from `dnorm()`: here `x` is in its own parentheses. The default call of `AR1(phi)(x)` assumes that the AR1 process has sd = 1, so it won't fit the sd. We use the `SCALE()` function to fit the sd. So to evaluate the likelihood of the data `x` given it is from an AR1 process with correlation `phi` and unknown sd, you would write `SCALE(AR1(phi), ar_sd)(x)`, where `ar_sd` is the sd parameter.
+
+Here it is in our code:
+```{r, comment = NA}
+writeLines(readLines("lm_ar.cpp")[31:33])
+```
+
+Lastly we report our fit line, parameters, and likelihood value.
+```{r, comment = NA}
+writeLines(readLines("lm_ar.cpp")[35:43])
+```
+
+Okay, next let's fit the model to the simulated data. For comparison, we'll also fit a simple linear regression. We'll use the `map` argument in the TMB function `MakeADFun` to fit both models. The `map` argument allows you to set a certain parameter to a fixed value. In this case, setting `phi = 0` yields the simple linear regression.
+
+First we compile and load the model.
+```{r}
+# Compile model
+compile("lm_ar.cpp")
+
+# Build object
+dyn.load(dynlib("lm_ar"))
+```
+
+Then we fit the two regressions.
+```{r, results = "hide"}
+Obj_lmar <- MakeADFun(data = list("x" = Year, # regression with correlated residuals
+                                  "y" = Observation), 
+                      parameters =  list("b0" = 0,
+                                         "b1" = 0,
+                                         "unbounded_phi" = 0,
+                                         "log_ar_sd" = 0))
+
+Obj_lm <- MakeADFun(data = list("x" = Year, # simple regression
+                                "y" = Observation), 
+                    parameters =  list("b0" = 0,
+                                       "b1" = 0,
+                                       "unbounded_phi" = 0,
+                                       "log_ar_sd" = 0),
+                    map = list("unbounded_phi" = factor(NA)))
+
+
+# Optimize
+Opt_lmar <- TMBhelper::Optimize(obj = Obj_lmar, newtonsteps = 1)
+Opt_lm <- TMBhelper::Optimize(obj = Obj_lm, newtonsteps = 1)
+
+# Report out the ADREPORT vars
+Report_sd_lm <- TMB::sdreport(Obj_lm)
+Report_sd_lmar <- TMB::sdreport(Obj_lmar)
+```
+
+Notice the two calls to `MakeADFun` to set up each model. The only difference between the two is that in the simple regression (the second one), the `phi` parameter is set to 0. We do this through the `map` argument with `unbounded_phi =  factor(NA)`. This tells TMB to keep `unbounded_phi` set to its initial guess which is given in the `parameters` argument (i.e., `unbounded_phi = 0`).
+
+## Results
+Next let's look at each regression against the true trend and observations. I'll hide the plotting code for brevity but if you're interested you can find it here <ADD LINK>.
+
+```{r, echo = FALSE}
+# Plot predicted vs observed vs true
+df2plot <-
+  rbind(data.frame(variable = names(Report_sd_lm$value),
+             value = Report_sd_lm$value,
+             sd = Report_sd_lm$sd, 
+             source = "fit_lm"),
+        data.frame(variable = names(Report_sd_lmar$value),
+                   value = Report_sd_lmar$value,
+                   sd = Report_sd_lmar$sd, 
+                   source = "fit_lmar")) %>%
+  dplyr::mutate(variable = ifelse(variable == "fit_y", 
+                                  "trend",
+                                  as.character(variable))) %>%
+  dplyr::filter(variable == "trend") %>%
+  rbind(data.frame(variable = rep(c("trend"), each = length(trend)),
+                   value = trend,
+                   sd = NA,
+                   source = "true")) %>%
+  rbind(data.frame(variable = "Observation",
+                   value = Observation,
+                   sd = NA,
+                   source = "observed")) %>%
+  dplyr::mutate(Year = rep(Year, 4))
+
+
+# Plot estimated trend vs true trend
+ggplot(df2plot,
+       aes(x = Year, y = value)) +
+  geom_line(data = df2plot %>%
+             dplyr::filter(variable == "trend") %>%
+             dplyr::filter(source %in% c("fit_lm", "fit_lmar", "true")),
+            aes(color = source)) +
+  geom_ribbon(data = df2plot %>%
+                dplyr::filter(variable == "trend") %>%
+                dplyr::filter(source %in% c("fit_lm", "fit_lmar", "true")),
+              aes(ymin = value - 1.96*sd,
+                  ymax = value + 1.96*sd,
+                  fill = source),
+              alpha = 0.2) +
+  geom_point(data = df2plot %>% 
+               dplyr::filter(variable == "Observation")) +
+  theme_bw() +
+  theme(legend.title = element_blank()) +
+  ylab("Observation value")
+```
+
+Notice that the true trend is upward, while the simple regression fit (`fit_lm`) is downward, and the regression with correlated residuals (`fit_lmar`) is flat. So while the correlated regression is less wrong, neither is doing particularly well at estimating the true trend. But the difference between the two is that the regression with correlated residuals has a *much* larger confidence interval, and although it gets the trend wrong, its confidence interval at least captures the true trend. The simple regression on the other hand has a much tighter confidence interval which doesn't capture the true trend. In my experience, this is a general pattern when comparing these two types of regression. The regression with correlated residuals acknowledges that the observations are not totally independent, therefore there is less information with which to estimate the trend, and as a result the confidence interval is expanded. This is the more honest depiction of the uncertainty.
+
+Lastly, let's take a look at how well the correlated regression model estimates the parameters of the simulation model. 
+
+```{r, echo = FALSE}
+# Plot estimated parameters vs true parameters
+ar_sd <- sigma / (1 - phi^2)^0.5
+bound <- function(x) 2/(1 + exp(-2 * x)) - 1 # function to bound phi b/t -1 and 1
+df2plot <-
+  data.frame(variable = "b0",
+             tru = b0,
+             est = Report_sd_lmar$value["b0"],
+             ciu = Report_sd_lmar$value["b0"] + 1.96 * Report_sd_lmar$sd[names(Report_sd_lmar$value) == "b0"],
+             cil = Report_sd_lmar$value["b0"] - 1.96 * Report_sd_lmar$sd[names(Report_sd_lmar$value) == "b0"]) %>%
+  rbind(data.frame(variable = "b1",
+                   tru = b1,
+                   est = Report_sd_lmar$value["b1"],
+                   ciu = Report_sd_lmar$value["b1"] + 1.96 * Report_sd_lmar$sd[names(Report_sd_lmar$value) == "b1"],
+                   cil = Report_sd_lmar$value["b1"] - 1.96 * Report_sd_lmar$sd[names(Report_sd_lmar$value) == "b1"])) %>%
+  rbind(data.frame(variable = "phi",
+                   tru = phi,
+                   est = bound(Report_sd_lmar$value["unbounded_phi"]),
+                   ciu = bound(Report_sd_lmar$value["unbounded_phi"] + 
+                                 1.96 * Report_sd_lmar$sd[names(Report_sd_lmar$value) == "unbounded_phi"]),
+                   cil = bound(Report_sd_lmar$value["unbounded_phi"] - 
+                                 1.96 * Report_sd_lmar$sd[names(Report_sd_lmar$value) == "unbounded_phi"]))) %>%
+  rbind(data.frame(variable = "ar_sd",
+                   tru = ar_sd,
+                   est = exp(Report_sd_lmar$value["log_ar_sd"]),
+                   ciu = exp(Report_sd_lmar$value["log_ar_sd"] + 1.96 * Report_sd_lmar$sd[names(Report_sd_lmar$value) == "log_ar_sd"]),
+                   cil = exp(Report_sd_lmar$value["log_ar_sd"] - 1.96 * Report_sd_lmar$sd[names(Report_sd_lmar$value) == "log_ar_sd"])))
+
+ggplot(df2plot, aes(y = variable)) +
+  geom_point( aes(x = tru), color = "red", size  = 3) +
+  geom_point( aes(x = est), color = "blue", size = 3) +
+  geom_errorbarh(aes(xmin = cil,
+                     xmax = ciu), height = 0.1, color = "blue") +
+  theme_bw() +
+  ylab("") +
+  xlab("Value") +
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 14))
+```
+
+We see that true parameter values (in red) are within the 95% confidence interval of the estimates (blue) for all parameters, suggesting that the model is working as expected.
+
+
+## Summary
+
+Hopefully you've learned how to fit a regression with correlated residuals in R using TMB. Along the way we went over how to set parameters to a fixed value in TMB using the `map` argument, and how to bound parameters within certain intervals. We've also shown how the results of a regression with correlated residuals differs from a simple regression, particularly in the size of the confidence interval.
+
+
+
+
