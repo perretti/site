@@ -1,6 +1,6 @@
 ---
 title: A linear regression with correlated residuals
-date: "2019-01-08"
+date: '2019-01-08'
 tags:
   - R
   - TMB
