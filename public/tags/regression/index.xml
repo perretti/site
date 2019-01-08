@@ -6,20 +6,18 @@
     <description>Recent content in regression on Charles Perretti</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 23 Jul 2015 21:13:14 -0500</lastBuildDate>
+    <lastBuildDate>Tue, 08 Jan 2019 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/tags/regression/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
-      <title>Hello R Markdown</title>
-      <link>/post/2015/07/23/hello-r-markdown/</link>
-      <pubDate>Thu, 23 Jul 2015 21:13:14 -0500</pubDate>
+      <title>A linear regression with correlated residuals</title>
+      <link>/post/2019/01/08/a-linear-regression-with-correlated-residuals/</link>
+      <pubDate>Tue, 08 Jan 2019 00:00:00 +0000</pubDate>
       
-      <guid>/post/2015/07/23/hello-r-markdown/</guid>
-      <description>R Markdown This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see http://rmarkdown.rstudio.com.
-You can embed an R code chunk like this:
-summary(cars) ## speed dist ## Min. : 4.0 Min. : 2.00 ## 1st Qu.:12.0 1st Qu.: 26.00 ## Median :15.0 Median : 36.00 ## Mean :15.4 Mean : 42.98 ## 3rd Qu.</description>
+      <guid>/post/2019/01/08/a-linear-regression-with-correlated-residuals/</guid>
+      <description>Introduction One of the central assumptions of the linear regression is that the residuals are uncorrelated. Unfortunately, this assumption is often violated in real data. As we’ll see, ignoring this can lead to incorrect inferences, primarily through overconfident estimates. Here I’ll demonstrate how to fit a linear regression that accounts for correlated residuals, and how the results differ from that of a linear regression without correlated residuals (which I’ll call a “simple linear regression”).</description>
     </item>
     
   </channel>

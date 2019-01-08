@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>autocorrelation on Charles Perretti</title>
+    <link>/tags/autocorrelation/</link>
+    <description>Recent content in autocorrelation on Charles Perretti</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 08 Jan 2019 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/tags/autocorrelation/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>A linear regression with correlated residuals</title>
+      <link>/post/2019/01/08/a-linear-regression-with-correlated-residuals/</link>
+      <pubDate>Tue, 08 Jan 2019 00:00:00 +0000</pubDate>
+      
+      <guid>/post/2019/01/08/a-linear-regression-with-correlated-residuals/</guid>
+      <description>Introduction One of the central assumptions of the linear regression is that the residuals are uncorrelated. Unfortunately, this assumption is often violated in real data. As we’ll see, ignoring this can lead to incorrect inferences, primarily through overconfident estimates. Here I’ll demonstrate how to fit a linear regression that accounts for correlated residuals, and how the results differ from that of a linear regression without correlated residuals (which I’ll call a “simple linear regression”).</description>
+    </item>
+    
+  </channel>
+</rss>
