@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Categorical regression in Stan | Charles Perretti</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  </head>
+
+  <body>
+    <nav>
+    <ul class="menu">
+      
+      <li><a href="/">Home</a></li>
+      
+      <li><a href="/about/">About</a></li>
+      
+      <li><a href="/tags/">Tags</a></li>
+      
+    </ul>
+    <hr/>
+    </nav>
+
+<div class="article-meta">
+<h1><span class="title">Categorical regression in Stan</span></h1>
+
+<h2 class="date">2019/05/01</h2>
+</div>
+
+<main>
+<script src="/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/rmarkdown-libs/plotly-binding/plotly.js"></script>
+<script src="/rmarkdown-libs/typedarray/typedarray.min.js"></script>
+<script src="/rmarkdown-libs/jquery/jquery.min.js"></script>
+<link href="/rmarkdown-libs/crosstalk/css/crosstalk.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/crosstalk/js/crosstalk.min.js"></script>
+<link href="/rmarkdown-libs/plotly-htmlwidgets-css/plotly-htmlwidgets.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/plotly-main/plotly-latest.min.js"></script>
+
+
+<p>Predicting a categorical response is a fairly common task in ecology. For example, we might want to predict which species will colonize a particular habitat given some characteristics of the habitat. Or which species an individual belongs to based on some body mesurements. The underlying goal is to construct a model that relates a set of measured covariates to a categorical outcome. Often we would like to also know the probability that each outcome will occur, rather than just the most likely outcome.</p>
+<p>A useful model for this type of problem is a categorical regression (also known as a multinomial or multi-logit), which is similar to a logistic regression but allows for more than two types of outcomes. The fact that there are more than two outcomes requires us to learn a few new concepts. Using Stan, I’ll walk through how to set up a categorical regression and how to interpret the output.</p>
+<p>Let’s say we’re collecting some fish for a reaserch project and we’re intersted in measuring the abundaces of three species. The problem is that the three species look very similar so they’re difficult to tell apart by eye. So for a sample of 100 fish we run a genetic test to definitively tell us the species. However, the genetic test is slow and costly, and we’d like to tell them apart using some morphological measurements, which can be done much faster. Specifically we’ll measure three fins on each fish, and using those three mesurements try to build a model that predicts the species as determined by the genetic test. Once we have the fitted model we can apply it to new data on fin measurements to quickly figure out which species an individual belongs to. Of course there is some uncertainty in this procedure and we’d like to also estimate that. That is, we’d like to know the probability that a fish belongs to each species given its fin measurements.</p>
+<p>Let’s simulate some data that follows this scenario.</p>
+<pre class="r"><code># Load required libraries
+library(rethinking)
+library(plotly)</code></pre>
+<pre class="r"><code>set.seed(321) # for reproducibility
+
+n_obs &lt;- 100 # 100 observations (fish collected)
+n_cat &lt;- 3 # 3 outcome categories (species)
+n_cov &lt;- 3 # 3 covariates (fin measurements)
+X &lt;- matrix(5 + runif(n_cov*n_obs), n_obs, n_cov) +
+     matrix(c(1,0,0), n_obs, n_cov)# fin measurements</code></pre>
+<p>Next we need some way to convert those three fin measurements into a probability of each species. We do this by assigning a score to each category based on the values of the fin measurements, then those three scores are converted into probabilities of each species.</p>
+<pre class="r"><code>B &lt;- matrix(c(4, 0, 0, # effects of fin measurements on score of each species
+              0, 4, 0, 
+              0, 0, 4), nrow = n_cat, ncol = n_cov, byrow = TRUE)
+score &lt;- X %*% B</code></pre>
+<p>Here the matrix B just takes the fin measurements and converts them into scores for each species. If you play around with the values in B you’ll get different scores, but the concept is the same.</p>
+<p>Then we take those scores and convert them into probabilities using the softmax function. If you’re familiar with logistic regression, this is just like using the inverse-logit function to transform the model’s continuous predictions to lie on the [0,1] interval, except now we’re using the softmax function because it can convert predictions with more than two categories. The softmax function is computes the probability <span class="math inline">\((p_i)\)</span> of score i as <span class="math inline">\(p_i = e^{S_i}/\sum_{j=1}^Ke^{S_j}\)</span> where <span class="math inline">\(S_i\)</span> is score i, and K is the number of categories. In code that is</p>
+<pre class="r"><code>p &lt;- exp(score)/rowSums(exp(score))</code></pre>
+<p>Importantly, I’ve set up the fin measurements and the B matrix so that the covariates can be used to predict the species. In real life this may not be the case. For example, if all the fin measurements are roughly the same across species then they won’t be useful for differentiating between species. This seems obvious but if it’s overlooked it can cause model convergence problems.</p>
+<p>To show how we set up our model let’s take a quick look at how the value of a fin measurement affects the probablity that a fish will belong to each species. We’ll plot just the effect of measuring one fin while holding the other two fins at their mean value. I’ve offset the line for species 3 because otherwise it is hidden behind the line for species 1.</p>
+<pre class="r"><code>X2plot &lt;- cbind(seq(4,7, l=100), rep(5.5, 100), rep(5.5, 100))
+s2plot &lt;- X2plot %*% B
+p2plot &lt;- exp(s2plot)/rowSums(exp(s2plot))
+
+df2plot &lt;- 
+  data.frame(species1 = p2plot[,1],
+             species2 = p2plot[,2],
+             species3 = p2plot[,3] + 0.005,
+             cov1_val = seq(4,7, l=100)) %&gt;%
+  tidyr::gather(species, probability, -cov1_val) 
+
+ggplot(data = df2plot, aes(x = cov1_val, y = probability, color = species)) +
+  geom_line() +
+  theme_bw() +
+  ylab(&quot;Probability of species&quot;) +
+  xlab(&quot;Dorsal fin length (cm)&quot;) +
+  theme(legend.title = element_blank())</code></pre>
+<p><img src="/post/categorical_regression_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>So the longer the dorsal fin length the more likely it is species 1. And because of the way the B matrix is set up the same response exists for the other fins with respect to the other species.</p>
+<p>The model takes the covariate values and calculates the probabilities associated with each species. The only thing to do now is simulate some outcomes given those probabilities.</p>
+<pre class="r"><code>outcome &lt;- rep(NA, n_obs)
+for (i in 1:n_obs) {
+  outcome[i] &lt;- sample(1:n_cat, size = 1, prob = p[i,])  
+}</code></pre>
+<p>Let’s take a look at the outcomes that occured and their probabilities. Again notice how the data nicely partitions the species into groups. Your data may not be so nice.</p>
+<pre class="r"><code>plot_ly(data = data.frame(cbind(X, paste(&quot;Fish&quot;, outcome))), 
+        x = ~X1, y = ~X2, z = ~X3, 
+        color = ~X4) %&gt;%
+  add_markers() %&gt;%
+  layout(scene = list(xaxis = list(title = &#39;Dorsal fin length&#39;),
+                      yaxis = list(title = &#39;Pectoral fin length&#39;),
+                      zaxis = list(title = &#39;Caudal fin length&#39;)))</code></pre>
+<div id="htmlwidget-1" style="width:672px;height:480px;" class="plotly html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"visdat":{"62982134feb9":["function () ","plotlyVisDat"]},"cur_data":"62982134feb9","attrs":{"62982134feb9":{"x":{},"y":{},"z":{},"color":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter3d","mode":"markers","inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"scene":{"xaxis":{"title":"Dorsal fin length"},"yaxis":{"title":"Pectoral fin length"},"zaxis":{"title":"Caudal fin length"}},"xaxis":{"type":"category","categoryorder":"array","categoryarray":["5.00987849663943","5.02558308886364","5.04508694680408","5.06218912149779","5.06444755662233","5.07520359172486","5.09680773317814","5.12436501751654","5.13128712796606","5.14180638920516","5.16248695668764","5.16533889737912","5.17671333719045","5.19739922904409","5.23822045139968","5.27611888805404","5.28993282071315","5.31091240607202","5.31750586093403","5.34117985935882","5.36284108762629","5.39051196794026","5.4009175687097","5.40358999464661","5.43670809920877","5.43858266249299","5.43870601081289","5.45067322277464","5.48550475365482","5.52693268051371","5.53114872518927","5.53784287301823","5.54559491435066","5.59217187506147","5.5942602918949","5.59641835116781","5.60207345453091","5.60572106949985","5.63273802562617","5.63596775569022","5.64045901061036","5.651753669139","5.66119065810926","5.66287874314003","5.67232996365055","5.67582987062633","5.67674515629187","5.67733534891158","5.71025331295095","5.73702417942695","5.75123824877664","5.7880687606521","5.82049562293105","5.8299274565652","5.83850579545833","5.86474969657138","5.88987093069591","5.90546334953979","5.90595582756214","5.91377070941962","5.92605559760705","5.93117400957271","5.93728551943786","5.94905826286413","5.97855936270207","5.99272237624973","6.01299827476032","6.06295737461187","6.09524689940736","6.10473310272209","6.13282088027336","6.20163218840025","6.21050457865931","6.22422092175111","6.25507363537326","6.26272951322608","6.28065931005403","6.29050340829417","6.34268456953578","6.43086438463069","6.45238059642725","6.45737007982098","6.49446535436437","6.51127558550797","6.54095313628204","6.57468925509602","6.59885936672799","6.63360236515291","6.66184947779402","6.7182276644744","6.76633847458288","6.78514190600254","6.79182145884261","6.80659571988508","6.87210848159157","6.89081001793966","6.9558937617112","6.95693487534299","6.9898784540128","6.99290506099351"]},"yaxis":{"type":"category","categoryorder":"array","categoryarray":["5.00626982981339","5.03407288831659","5.04129040637054","5.08523376425728","5.11295021837577","5.12045761733316","5.12994042690843","5.15050549712032","5.15650732954964","5.15977095323615","5.16046283207834","5.1674688779749","5.18150233919732","5.216630151961","5.22253098082729","5.22870416333899","5.23407791997306","5.25605406495742","5.27189244912006","5.31447244784795","5.35492634493858","5.36283109127544","5.40154881123453","5.41386213130318","5.41514985030517","5.43489346001297","5.4350845341105","5.46748441201635","5.47136052278802","5.48249650606886","5.50394077925012","5.50458906660788","5.50714166276157","5.50717839109711","5.5197252263315","5.52168953209184","5.52199281705543","5.52956211008132","5.54781019315124","5.57920524384826","5.58420475083403","5.62583831208758","5.6335240912158","5.64428564044647","5.67749277758412","5.68832583748735","5.68949162890203","5.69208983657882","5.69363946514204","5.6947843793314","5.72243715054356","5.73310852260329","5.75751504208893","5.76078276359476","5.7683430572506","5.78218129370362","5.80792412348092","5.84122509579174","5.85081910481676","5.87918338924646","5.89401713619009","5.92014092393219","5.92540894844569","5.92597204679623","5.9616501040291","5.98892662697472","5.99679310782813","6.06980544049293","6.08989579044282","6.12256078678183","6.15912955044769","6.18697680532932","6.19311225111596","6.21248764288612","6.22785707935691","6.23310737893917","6.25290712527931","6.26130660064518","6.2636332642287","6.26941856159829","6.3067222754471","6.34710590634495","6.43008705903776","6.46434445935301","6.49849636945873","6.50241473666392","6.53483550902456","6.54595914669335","6.58527360204607","6.64123780513182","6.65113917225972","6.65532387327403","6.69800326204859","6.71479261829518","6.73626163159497","6.74459535186179","6.9077583104372","6.92256705835462","6.92813177057542","6.94552181358449"]},"hovermode":"closest","showlegend":true},"source":"A","config":{"modeBarButtonsToAdd":[{"name":"Collaborate","icon":{"width":1000,"ascent":500,"descent":-50,"path":"M487 375c7-10 9-23 5-36l-79-259c-3-12-11-23-22-31-11-8-22-12-35-12l-263 0c-15 0-29 5-43 15-13 10-23 23-28 37-5 13-5 25-1 37 0 0 0 3 1 7 1 5 1 8 1 11 0 2 0 4-1 6 0 3-1 5-1 6 1 2 2 4 3 6 1 2 2 4 4 6 2 3 4 5 5 7 5 7 9 16 13 26 4 10 7 19 9 26 0 2 0 5 0 9-1 4-1 6 0 8 0 2 2 5 4 8 3 3 5 5 5 7 4 6 8 15 12 26 4 11 7 19 7 26 1 1 0 4 0 9-1 4-1 7 0 8 1 2 3 5 6 8 4 4 6 6 6 7 4 5 8 13 13 24 4 11 7 20 7 28 1 1 0 4 0 7-1 3-1 6-1 7 0 2 1 4 3 6 1 1 3 4 5 6 2 3 3 5 5 6 1 2 3 5 4 9 2 3 3 7 5 10 1 3 2 6 4 10 2 4 4 7 6 9 2 3 4 5 7 7 3 2 7 3 11 3 3 0 8 0 13-1l0-1c7 2 12 2 14 2l218 0c14 0 25-5 32-16 8-10 10-23 6-37l-79-259c-7-22-13-37-20-43-7-7-19-10-37-10l-248 0c-5 0-9-2-11-5-2-3-2-7 0-12 4-13 18-20 41-20l264 0c5 0 10 2 16 5 5 3 8 6 10 11l85 282c2 5 2 10 2 17 7-3 13-7 17-13z m-304 0c-1-3-1-5 0-7 1-1 3-2 6-2l174 0c2 0 4 1 7 2 2 2 4 4 5 7l6 18c0 3 0 5-1 7-1 1-3 2-6 2l-173 0c-3 0-5-1-8-2-2-2-4-4-4-7z m-24-73c-1-3-1-5 0-7 2-2 3-2 6-2l174 0c2 0 5 0 7 2 3 2 4 4 5 7l6 18c1 2 0 5-1 6-1 2-3 3-5 3l-174 0c-3 0-5-1-7-3-3-1-4-4-5-6z"},"click":"function(gd) { \n        // is this being viewed in RStudio?\n        if (location.search == '?viewer_pane=1') {\n          alert('To learn about plotly for collaboration, visit:\\n https://cpsievert.github.io/plotly_book/plot-ly-for-collaboration.html');\n        } else {\n          window.open('https://cpsievert.github.io/plotly_book/plot-ly-for-collaboration.html', '_blank');\n        }\n      }"}],"cloud":false},"data":[{"x":["6.9558937617112","6.25507363537326","6.45238059642725","6.80659571988508","6.76633847458288","6.20163218840025","6.9898784540128","6.57468925509602","6.43086438463069","6.21050457865931","6.99290506099351","6.7182276644744","6.54095313628204","6.45737007982098","6.22422092175111","6.28065931005403","6.66184947779402","6.26272951322608","6.06295737461187","6.10473310272209","6.89081001793966","6.01299827476032","6.78514190600254","6.51127558550797","6.13282088027336","5.97855936270207","6.59885936672799","6.79182145884261","6.63360236515291","6.95693487534299","6.87210848159157","6.49446535436437"],"y":["5.18150233919732","5.99679310782813","5.62583831208758","5.41514985030517","5.6335240912158","5.73310852260329","5.12994042690843","5.89401713619009","5.50458906660788","5.00626982981339","5.6947843793314","5.76078276359476","5.22870416333899","5.35492634493858","5.68949162890203","5.68832583748735","5.92014092393219","5.67749277758412","5.216630151961","5.92597204679623","5.25605406495742","5.03407288831659","5.69363946514204","5.46748441201635","5.31447244784795","6.58527360204607","5.7683430572506","5.36283109127544","5.98892662697472","5.84122509579174","5.50717839109711","5.92540894844569"],"z":["5.09620366781019","5.57158559374511","5.79327722685412","5.57746814074926","5.83865841524675","5.25290622678585","5.19535569613799","5.59851700579748","5.66600955999456","5.63214857177809","5.90630200854503","5.15020003425889","5.93038059398532","5.21084041101858","5.72257927921601","5.64158254652284","5.87418256886303","5.96434614015743","5.49255168088712","5.4174053450115","5.52651359862648","5.41220333869569","5.76450458657928","5.56282684649341","5.61747876089066","5.00840669870377","5.1830008320976","5.99892116221599","5.73027795110829","5.63274296559393","5.98535116226412","5.07492748904042"],"type":"scatter3d","mode":"markers","name":"Fish 1","marker":{"color":"rgba(102,194,165,1)","line":{"color":"rgba(102,194,165,1)"}},"textfont":{"color":"rgba(102,194,165,1)"},"error_y":{"color":"rgba(102,194,165,1)"},"error_x":{"color":"rgba(102,194,165,1)"},"line":{"color":"rgba(102,194,165,1)"},"frame":null},{"x":["5.23822045139968","5.34117985935882","5.45067322277464","5.36284108762629","5.59217187506147","5.40358999464661","6.29050340829417","5.63596775569022","5.48550475365482","5.5942602918949","5.67582987062633","5.43870601081289","5.67232996365055","5.27611888805404","5.83850579545833","6.34268456953578","5.90546334953979","5.53784287301823","5.09680773317814","5.13128712796606","5.67674515629187","5.66119065810926","5.07520359172486","5.43858266249299","6.09524689940736","5.4009175687097","5.94905826286413","5.90595582756214","5.06218912149779","5.59641835116781","5.651753669139","5.60207345453091","5.52693268051371","5.16248695668764"],"y":["6.18697680532932","6.94552181358449","6.25290712527931","6.2636332642287","6.65113917225972","6.26941856159829","5.58420475083403","6.92813177057542","6.64123780513182","6.50241473666392","6.34710590634495","6.92256705835462","6.12256078678183","6.21248764288612","6.46434445935301","5.80792412348092","6.26130660064518","6.43008705903776","6.53483550902456","6.71479261829518","6.19311225111596","6.65532387327403","6.74459535186179","6.9077583104372","5.48249650606886","6.54595914669335","6.23310737893917","6.69800326204859","6.06980544049293","6.08989579044282","6.49849636945873","6.73626163159497","6.3067222754471","6.22785707935691"],"z":["5.1791254747659","5.95098189078271","5.12014609738253","5.82715965458192","5.74450524919666","5.2530529468786","5.36589421634562","5.05894731800072","5.73260421957821","5.97237134329043","5.39065769454464","5.87410547421314","5.38956408947706","5.39226798154414","5.23841908480972","5.77655046619475","5.1195969088003","5.8213817323558","5.41243390575983","5.59062007861212","5.32240775064565","5.96448058332317","5.24854288320057","5.81054615462199","5.76079731062055","5.53850593208335","5.32281757635064","5.99520280794241","5.40685118129477","5.47271168860607","5.60595887736417","5.00316251115873","5.87695488496684","5.1851150628645"],"type":"scatter3d","mode":"markers","name":"Fish 2","marker":{"color":"rgba(252,141,98,1)","line":{"color":"rgba(252,141,98,1)"}},"textfont":{"color":"rgba(252,141,98,1)"},"error_y":{"color":"rgba(252,141,98,1)"},"error_x":{"color":"rgba(252,141,98,1)"},"line":{"color":"rgba(252,141,98,1)"},"frame":null},{"x":["5.93728551943786","5.39051196794026","5.28993282071315","5.60572106949985","5.04508694680408","5.63273802562617","5.64045901061036","5.93117400957271","5.75123824877664","5.99272237624973","5.12436501751654","5.71025331295095","5.66287874314003","5.02558308886364","5.82049562293105","5.86474969657138","5.14180638920516","5.17671333719045","5.00987849663943","5.67733534891158","5.31750586093403","5.06444755662233","5.73702417942695","5.88987093069591","5.54559491435066","5.92605559760705","5.43670809920877","5.19739922904409","5.53114872518927","5.31091240607202","5.7880687606521","5.16533889737912","5.8299274565652","5.91377070941962"],"y":["5.08523376425728","5.40154881123453","5.69208983657882","5.15650732954964","5.50714166276157","5.9616501040291","5.04129040637054","5.52199281705543","5.57920524384826","6.15912955044769","5.87918338924646","5.23407791997306","5.4350845341105","5.12045761733316","5.16046283207834","5.50394077925012","5.64428564044647","5.15050549712032","5.72243715054356","5.15977095323615","5.52956211008132","5.78218129370362","5.54781019315124","5.1674688779749","5.11295021837577","5.85081910481676","5.47136052278802","5.43489346001297","5.41386213130318","5.52168953209184","5.22253098082729","5.27189244912006","5.75751504208893","5.5197252263315"],"z":["6.01043667295016","6.87145571154542","6.34686680370942","6.4647535213735","6.50696186046116","6.41545446659438","6.42246926901862","6.69836007570848","6.23811838286929","5.6644670132082","6.9386258085724","6.69081880291924","6.56610189331695","6.38424538332038","6.8323511031922","6.59211624297313","6.15069232764654","6.11266611982137","6.59350421954878","6.2521394144278","6.28378740814514","6.34255266096443","6.8496640229132","6.73513209470548","6.95288664684631","6.19410008238629","6.33434322220273","6.20954434596933","6.65588597906753","6.01540061668493","6.78078838041984","6.98143241833895","6.95609802799299","6.45049409521744"],"type":"scatter3d","mode":"markers","name":"Fish 3","marker":{"color":"rgba(141,160,203,1)","line":{"color":"rgba(141,160,203,1)"}},"textfont":{"color":"rgba(141,160,203,1)"},"error_y":{"color":"rgba(141,160,203,1)"},"error_x":{"color":"rgba(141,160,203,1)"},"line":{"color":"rgba(141,160,203,1)"},"frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"base_url":"https://plot.ly"},"evals":["config.modeBarButtonsToAdd.0.click"],"jsHooks":[]}</script>
+<p>Next let’s see if we can fit a categorical regression to these data and recover the relationship between the fin measurements and the species. First let’s take a look at the Stan code.</p>
+<pre class="r"><code>writeLines(readLines(&quot;categorical_regression.stan&quot;))</code></pre>
+<pre><code>data {
+  int n_obs;
+  int n_cat;
+  int n_cov;
+  int outcome[n_obs];
+  matrix[n_obs, n_cov] X;
+}
+
+transformed data {
+  vector[n_cov] zeros = rep_vector(0, n_cov);
+}
+
+parameters {
+  matrix[n_cov, n_cat - 1] B_sub;
+}
+
+transformed parameters {
+  matrix[n_cov, n_cat] B = append_col(zeros, B_sub);
+}
+
+model {
+  matrix[n_obs, n_cat] score = X * B;
+  
+  target += normal_lpdf(to_vector(B_sub) | 0, 10); // prior on B_sub
+  
+  for(i in 1:n_obs) {
+    vector[n_cat] p = softmax(to_vector(score[i,]));
+    target += categorical_lpmf(outcome[i] | p);
+  }
+}
+
+generated quantities {
+  matrix[n_obs, n_cat] p_est;
+  for(i in 1:n_obs) {
+    p_est[i,] = to_row_vector(softmax(to_vector(X[i,] * B)));
+  }
+}</code></pre>
+<p>You see the usual data input at the top, but then you’ll see a transformed data block. This is because in order for the model to be identifiable we must set one of the categories as a reference category. We do this by setting it’s coefficients to zero, which is what the vector in the transformed data block will be used for.</p>
+<p>Next we define the parameters which are now a n_cov x (n_cat-1) matrix.</p>
+<p>The model block takes the parameter estimates and calculates the category scores for each observation, converts those into a vector of probabilities, and calculates the likelihood using the categorical distribution.</p>
+<p>Finally, in the generated quantities block, we calculate the probability estimates for each set of observations (fin measurements).</p>
+<p>Next let’s fit the model to the data.</p>
+<pre class="r"><code>fit &lt;- stan(file = &quot;categorical_regression.stan&quot;, 
+                 data = list(n_obs = n_obs, 
+                             n_cat = n_cat,
+                             n_cov = n_cov,
+                             outcome = outcome,
+                             X = X),
+            chains = 4, cores = 4)</code></pre>
+<p>We can perform an intial check for convergence by looking at the Rhat for each parameter (for a more in-depth look at fit diagnostics launch <code>shinystan::launch_shinystan(fit)</code>).</p>
+<pre class="r"><code>summary(fit, probs = c(.1, .5, .9))$summary[1:6,]</code></pre>
+<pre><code>##                  mean    se_mean       sd        10%       50%        90%
+## B_sub[1,1]  -7.418952 0.07813914 2.265251 -10.397967 -7.177730 -4.7604050
+## B_sub[1,2] -10.075848 0.08761201 2.696169 -13.737390 -9.787426 -6.8278902
+## B_sub[2,1]   4.018443 0.03326197 1.188211   2.577100  3.916617  5.5569139
+## B_sub[2,2]  -1.428316 0.05329014 1.825174  -3.784826 -1.338061  0.7942704
+## B_sub[3,1]   3.847403 0.06947296 2.198421   1.181046  3.656958  6.7508955
+## B_sub[3,2]  11.789942 0.09920184 3.120552   7.999306 11.425584 15.9617624
+##                n_eff     Rhat
+## B_sub[1,1]  840.4177 1.002657
+## B_sub[1,2]  947.0367 1.001886
+## B_sub[2,1] 1276.1192 1.002607
+## B_sub[2,2] 1173.0450 1.001243
+## B_sub[3,1] 1001.3601 1.001986
+## B_sub[3,2]  989.5175 1.000560</code></pre>
+<p>The actual parameter estimates are tricky to interpret though since the B matrix is set up differently in the stan model than in the simulation model. So a good way to examine model fit is to plot the estimated probabilities versus the true probabilities.</p>
+<pre class="r"><code>fit_summary &lt;- 
+  summary(fit, pars = &quot;p_est&quot;, probs = c(0.05, 0.95))$summary %&gt;% 
+  as.data.frame %&gt;%
+  dplyr::mutate(obs_cat = substr(row.names(.), 7, 999)) %&gt;%
+  tidyr::separate(obs_cat, c(&quot;observation&quot;, &quot;category&quot;), &quot;,&quot;) %&gt;%
+  dplyr::mutate(category = gsub(pattern = &quot;]&quot;, replacement = &quot;&quot;, x = category),
+                observation = as.integer(observation)) %&gt;%
+  dplyr::left_join({p %&gt;% 
+                    as.data.frame() %&gt;% 
+                    dplyr::mutate(observation = 1:n_obs) %&gt;%
+                    tidyr::gather(category, true_p, -observation) %&gt;%
+                    dplyr::mutate(category = gsub(&quot;V&quot;, &quot;&quot;, category))})</code></pre>
+<pre><code>## Joining, by = c(&quot;observation&quot;, &quot;category&quot;)</code></pre>
+<pre class="r"><code>ggplot(fit_summary, aes(x = true_p, y = mean)) +
+  geom_point() +
+  geom_abline() +
+  facet_wrap(~category) +
+  theme_bw() +
+  xlab(&quot;True probablity&quot;) +
+  ylab(&quot;Estimated probability&quot;) </code></pre>
+<p><img src="/post/categorical_regression_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p>We see that they mostly match up pretty well, which is encouraging. Importantly, each of the estimated probabilities has an uncertainty associated with it, and that is captured in its posterior distribution. To show that, we can plot the quantiles of the posterior (i.e., the credible intervals). I’ll plot the 95% credible interval for each estimate.</p>
+<pre class="r"><code>  ggplot(fit_summary, aes(x = true_p, y = mean)) +
+  geom_point() +
+  geom_abline() +
+  facet_wrap(~category) +
+  theme_bw() +
+  xlab(&quot;True probablity&quot;) +
+  ylab(&quot;Estimated probability&quot;) +
+  geom_errorbar(width=.02, alpha = 0.4, aes(ymin=`5%`, ymax=`95%`))</code></pre>
+<p><img src="/post/categorical_regression_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p>We see that the 95% interval tends to capture the one-to-one line most of the time, another sign that our model is working as we intended.</p>
+<p>Let’s also calculate a summary statistic that describes how well our predicted probabilities match the true probabilities. We’ll just calculate the mean squared error of the predicted probabilities vs the true probabilities, and compare that to the mean squared error of predicting equal probabilities for each category.</p>
+<pre class="r"><code>  mean((fit_summary$mean - fit_summary$true_p)^2) /mean((1/3 - fit_summary$true_p)^2)</code></pre>
+<pre><code>## [1] 0.01937756</code></pre>
+<p>So the model has roughly 2% of the error that you would get if you just predicted all categories were equally likely all the time.</p>
+<p>In conclusion, we went over the components of a categorical regression, fit it to some simulated data, and showed that it recovers the data generating process reasonably well.</p>
+
+</main>
+
+  <footer>
+  <script src="//yihui.name/js/math-code.js"></script>
+<script async src="//cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+
+<script async src="//yihui.name/js/center-img.js"></script>
+
+  
+  <hr/>
+  <a href="https://github.com/perretti">Github</a> | <a href="https://twitter.com/charlieperretti">Twitter</a>
+  
+  </footer>
+  </body>
+</html>
+

@@ -1,23 +1,42 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Tutorial on Charles Perretti</title>
+    <title>tutorial on Charles Perretti</title>
     <link>/tags/tutorial/</link>
-    <description>Recent content in Tutorial on Charles Perretti</description>
+    <description>Recent content in tutorial on Charles Perretti</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 14 Jun 2017 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Wed, 01 May 2019 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/tags/tutorial/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
-      <title>Another Note on A blogdown Tutorial</title>
-      <link>/note/2017/06/14/another-note/</link>
-      <pubDate>Wed, 14 Jun 2017 00:00:00 +0000</pubDate>
+      <title>Categorical regression in Stan</title>
+      <link>/post/2019/05/01/categorical-regression-in-stan/</link>
+      <pubDate>Wed, 01 May 2019 00:00:00 +0000</pubDate>
       
-      <guid>/note/2017/06/14/another-note/</guid>
-      <description>I just discovered an awesome tutorial on blogdown written by Alison. I have to admit this is the best blogdown tutorial I have seen so far.</description>
+      <guid>/post/2019/05/01/categorical-regression-in-stan/</guid>
+      <description>Predicting a categorical response is a fairly common task in ecology. For example, we might want to predict which species will colonize a particular habitat given some characteristics of the habitat. Or which species an individual belongs to based on some body mesurements. The underlying goal is to construct a model that relates a set of measured covariates to a categorical outcome. Often we would like to also know the probability that each outcome will occur, rather than just the most likely outcome.</description>
+    </item>
+    
+    <item>
+      <title>A linear regression with correlated residuals</title>
+      <link>/post/2019/01/08/a-linear-regression-with-correlated-residuals/</link>
+      <pubDate>Tue, 08 Jan 2019 00:00:00 +0000</pubDate>
+      
+      <guid>/post/2019/01/08/a-linear-regression-with-correlated-residuals/</guid>
+      <description>Introduction One of the central assumptions of the linear regression is that the residuals are uncorrelated. Unfortunately, this assumption is often violated in real data. As we’ll see, ignoring this can lead to incorrect inferences, primarily through overconfident estimates. Here I’ll demonstrate how to fit a linear regression that accounts for correlated residuals, and how the results differ from that of a linear regression without correlated residuals (which I’ll call a “simple linear regression”).</description>
+    </item>
+    
+    <item>
+      <title>Estimate missing values in TMB using a state-space model</title>
+      <link>/post/2018/11/06/estimate-missing-values-in-tmb-using-a-state-space-model/</link>
+      <pubDate>Tue, 06 Nov 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/post/2018/11/06/estimate-missing-values-in-tmb-using-a-state-space-model/</guid>
+      <description>Introduction When working with time series we often run into the problem of missing observations. Here I’ll walk through how to estimate missing observations and their uncertainties using a state-space model in R using Template Model Builder (TMB).
+I’ll use a random-walk state-space model (also known as a Kalman Filter) to estimate missing values, so let’s start off by describing that model. Every state-space model is composed of a two parts: (1) a process model and (2) an observation model.</description>
     </item>
     
   </channel>

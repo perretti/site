@@ -6,6 +6,7 @@ tags:
   - TMB
   - state-space
   - missing values
+  - tutorial
 output: html_document
 ---
 
@@ -124,9 +125,12 @@ Type objective_function&lt;Type&gt;::operator() ()
 }</code></pre>
 <p>Now that we’ve gone through the TMB code, let’s go ahead and fit the model to the data we generated.</p>
 <pre class="r"><code># Compile model
-library(TMB)
-
-Version &lt;- &quot;missing_values&quot;
+library(TMB)</code></pre>
+<pre><code>## Warning in checkMatrixPackageVersion(): Package version inconsistency detected.
+## TMB was built with Matrix version 1.2.15
+## Current Matrix version is 1.2.14
+## Please re-install &#39;TMB&#39; from source using install.packages(&#39;TMB&#39;, type = &#39;source&#39;) or ask CRAN for a binary version of &#39;TMB&#39; matching CRAN&#39;s &#39;Matrix&#39; package</code></pre>
+<pre class="r"><code>Version &lt;- &quot;missing_values&quot;
 compile( paste0(Version,&quot;.cpp&quot;) )
 
 # Setup data

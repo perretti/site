@@ -42,8 +42,12 @@
 <p>Next, let’s simulate an example time series with a long-term positive trend and correlated observation errors.</p>
 <pre class="r"><code># load required libraries
 library(ggplot2)
-library(TMB)
-library(dplyr)
+library(TMB)</code></pre>
+<pre><code>## Warning in checkMatrixPackageVersion(): Package version inconsistency detected.
+## TMB was built with Matrix version 1.2.15
+## Current Matrix version is 1.2.14
+## Please re-install &#39;TMB&#39; from source using install.packages(&#39;TMB&#39;, type = &#39;source&#39;) or ask CRAN for a binary version of &#39;TMB&#39; matching CRAN&#39;s &#39;Matrix&#39; package</code></pre>
+<pre class="r"><code>library(dplyr)
 
 set.seed(123) # for reproducibility
 

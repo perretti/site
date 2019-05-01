@@ -6,10 +6,19 @@
     <description>Recent content in Home on Charles Perretti</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 08 Jan 2019 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Wed, 01 May 2019 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Categorical regression in Stan</title>
+      <link>/post/2019/05/01/categorical-regression-in-stan/</link>
+      <pubDate>Wed, 01 May 2019 00:00:00 +0000</pubDate>
+      
+      <guid>/post/2019/05/01/categorical-regression-in-stan/</guid>
+      <description>Predicting a categorical response is a fairly common task in ecology. For example, we might want to predict which species will colonize a particular habitat given some characteristics of the habitat. Or which species an individual belongs to based on some body mesurements. The underlying goal is to construct a model that relates a set of measured covariates to a categorical outcome. Often we would like to also know the probability that each outcome will occur, rather than just the most likely outcome.</description>
+    </item>
     
     <item>
       <title>A linear regression with correlated residuals</title>
@@ -45,13 +54,13 @@ I’ll use a random-walk state-space model (also known as a Kalman Filter) to es
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>/about/</guid>
-      <description>Postdoctoral Research Associate
+      <description>Fishery Biologist (contractor)
 Population Dynamics Branch
 Northeast Fisheries Science Center, NMFS, NOAA
 Woods Hole, MA
-I use statistical models to study why fish populations fluctuate in abundance and distribution. I am particularly interested in research that impacts the management of wild fisheries.
+I use statistical models to study why fish populations fluctuate in abundance and distribution. I&amp;rsquo;m particularly interested in research that impacts the management of wild fisheries.
 Some topics I have worked on:
- Spatio-temporal modelling of fish distributions Stock assessment methods Ecological forecasting State-space models Time series analysis  A list of my publications can be found in my CV and on Google Scholar.</description>
+ Stock assessment methods Spatio-temporal modelling of fish distributions Ecological forecasting State-space models Time series analysis  A list of my publications can be found in my CV and on Google Scholar.</description>
     </item>
     
   </channel>

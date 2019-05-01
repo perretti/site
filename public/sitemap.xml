@@ -3,6 +3,11 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
+    <loc>/post/2019/05/01/categorical-regression-in-stan/</loc>
+    <lastmod>2019-05-01T00:00:00+00:00</lastmod>
+  </url>
+  
+  <url>
     <loc>/post/2019/01/08/a-linear-regression-with-correlated-residuals/</loc>
     <lastmod>2019-01-08T00:00:00+00:00</lastmod>
   </url>
@@ -28,18 +33,24 @@
   
   <url>
     <loc>/</loc>
-    <lastmod>2019-01-08T00:00:00+00:00</lastmod>
+    <lastmod>2019-05-01T00:00:00+00:00</lastmod>
   </url>
   
   <url>
     <loc>/post/</loc>
-    <lastmod>2019-01-08T00:00:00+00:00</lastmod>
+    <lastmod>2019-05-01T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>/tags/r/</loc>
-    <lastmod>2019-01-08T00:00:00+00:00</lastmod>
+    <lastmod>2019-05-01T00:00:00+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/stan/</loc>
+    <lastmod>2019-05-01T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   
@@ -51,7 +62,7 @@
   
   <url>
     <loc>/tags/</loc>
-    <lastmod>2019-01-08T00:00:00+00:00</lastmod>
+    <lastmod>2019-05-01T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   
@@ -74,14 +85,26 @@
   </url>
   
   <url>
+    <loc>/tags/multinomial/</loc>
+    <lastmod>2019-05-01T00:00:00+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
     <loc>/tags/regression/</loc>
-    <lastmod>2019-01-08T00:00:00+00:00</lastmod>
+    <lastmod>2019-05-01T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>/tags/state-space/</loc>
     <lastmod>2018-11-06T00:00:00+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>/tags/tutorial/</loc>
+    <lastmod>2019-05-01T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   

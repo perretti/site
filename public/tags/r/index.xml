@@ -6,10 +6,19 @@
     <description>Recent content in R on Charles Perretti</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 08 Jan 2019 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Wed, 01 May 2019 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/tags/r/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Categorical regression in Stan</title>
+      <link>/post/2019/05/01/categorical-regression-in-stan/</link>
+      <pubDate>Wed, 01 May 2019 00:00:00 +0000</pubDate>
+      
+      <guid>/post/2019/05/01/categorical-regression-in-stan/</guid>
+      <description>Predicting a categorical response is a fairly common task in ecology. For example, we might want to predict which species will colonize a particular habitat given some characteristics of the habitat. Or which species an individual belongs to based on some body mesurements. The underlying goal is to construct a model that relates a set of measured covariates to a categorical outcome. Often we would like to also know the probability that each outcome will occur, rather than just the most likely outcome.</description>
+    </item>
     
     <item>
       <title>A linear regression with correlated residuals</title>
