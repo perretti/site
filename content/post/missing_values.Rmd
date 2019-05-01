@@ -6,6 +6,7 @@ tags:
   - TMB
   - state-space
   - missing values
+  - tutorial
 output: html_document
 ---
 

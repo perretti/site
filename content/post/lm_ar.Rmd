@@ -6,6 +6,7 @@ tags:
   - TMB
   - regression
   - autocorrelation
+  - tutorial
 output: html_document
 ---
 

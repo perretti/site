@@ -1,6 +1,10 @@
 {
-    "path" : "~/Projects/site/content/post",
+    "path" : "~/Projects/site/in_progress",
     "sortOrder" : [
+        {
+            "ascending" : false,
+            "columnIndex" : 4
+        },
         {
             "ascending" : true,
             "columnIndex" : 2

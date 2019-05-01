@@ -1,0 +1,205 @@
+---
+title: Categorical regression in Stan
+date: '2019-05-01'
+tags:
+  - R
+  - tutorial
+  - Stan
+  - multinomial
+  - regression
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Predicting a categorical response is a fairly common task in ecology. For example, we might
+want to predict which species will colonize a particular habitat given some characteristics of the habitat. Or which species an individual belongs to based on some body mesurements. The underlying goal is to construct a model that relates a set of measured covariates to a categorical outcome. Often we would like to also know the probability that each outcome will occur, rather than just the most likely outcome.
+ 
+A useful model for this type of problem is a categorical regression (also known as a multinomial or multi-logit), which is similar to a logistic regression but allows for more than two types of outcomes. The fact that there are more than two outcomes requires us to learn a few new concepts. Using Stan, I'll walk through how to set up a categorical regression and how to interpret the output.
+ 
+Let's say we're collecting some fish for a reaserch project and we're intersted in measuring the abundaces of three species. The problem is that the three species look very similar so they're difficult to tell apart by eye. So for a sample of 100 fish we run a genetic test to definitively tell us the species. However, the genetic test is slow and costly, and we'd like to tell them apart using some morphological measurements, which can be done much faster. Specifically we'll measure three fins on each fish, and using those three mesurements try to build a model that predicts the species as determined by the genetic test. Once we have the fitted model we can apply it to new data on fin measurements to quickly figure out which species an individual belongs to. Of course there is some uncertainty in this procedure and we'd like to also estimate that. That is, we'd like to know the probability that a fish belongs to each species given its fin measurements.
+
+Let's simulate some data that follows this scenario.
+```{r,  message = FALSE}
+# Load required libraries
+library(rethinking)
+library(plotly)
+```
+
+```{r}
+set.seed(321) # for reproducibility
+
+n_obs <- 100 # 100 observations (fish collected)
+n_cat <- 3 # 3 outcome categories (species)
+n_cov <- 3 # 3 covariates (fin measurements)
+X <- matrix(5 + runif(n_cov*n_obs), n_obs, n_cov) +
+     matrix(c(1,0,0), n_obs, n_cov)# fin measurements
+```
+
+Next we need some way to convert those three fin measurements into a probability of
+each species. We do this by assigning a score to each category based on the
+values of the fin measurements, then those three scores are converted into probabilities
+of each species.
+```{r}
+B <- matrix(c(4, 0, 0, # effects of fin measurements on score of each species
+              0, 4, 0, 
+              0, 0, 4), nrow = n_cat, ncol = n_cov, byrow = TRUE)
+score <- X %*% B
+```
+Here the matrix B just takes the fin measurements and converts them into scores for each
+species. If you play around with the values in B you'll get different scores, but the
+concept is the same.
+
+Then we take those scores and convert them into probabilities using the softmax function.
+If you're familiar with logistic regression, this is just like using
+the inverse-logit function to transform the model's continuous predictions to lie on the [0,1] interval, except now we're using the softmax function because it can convert predictions with more than two categories. The softmax function is computes the probability $(p_i)$ of score i as $p_i = e^{S_i}/\sum_{j=1}^Ke^{S_j}$ where $S_i$ is score i, and K is the number of categories. In code that is
+```{r}
+p <- exp(score)/rowSums(exp(score))
+```
+
+Importantly, I've set up the fin measurements and the B matrix so that
+the covariates can be used to predict the species. In real life this may not be the case. For example, if all the fin measurements are roughly the same across species then they won't be useful for differentiating between species. This seems obvious but if it's overlooked it can cause model convergence problems. 
+
+To show how we set up our model let's take a quick look at how the value of a fin 
+measurement affects the probablity that a fish will belong to each species. We'll plot 
+just the effect of measuring one fin while holding the other two fins at their mean value. I've offset the line for species 3 because otherwise it is hidden behind the line for species 1.
+
+```{r}
+X2plot <- cbind(seq(4,7, l=100), rep(5.5, 100), rep(5.5, 100))
+s2plot <- X2plot %*% B
+p2plot <- exp(s2plot)/rowSums(exp(s2plot))
+
+df2plot <- 
+  data.frame(species1 = p2plot[,1],
+             species2 = p2plot[,2],
+             species3 = p2plot[,3] + 0.005,
+             cov1_val = seq(4,7, l=100)) %>%
+  tidyr::gather(species, probability, -cov1_val) 
+
+ggplot(data = df2plot, aes(x = cov1_val, y = probability, color = species)) +
+  geom_line() +
+  theme_bw() +
+  ylab("Probability of species") +
+  xlab("Dorsal fin length (cm)") +
+  theme(legend.title = element_blank())
+```
+
+So the longer the dorsal fin length the more likely it is species 1. And because of the way the B matrix is set up the same response exists for the other fins with respect to the other species.
+
+The model takes the covariate values and calculates the probabilities associated with each species. The only thing to do now is simulate some outcomes given those probabilities.
+```{r}
+outcome <- rep(NA, n_obs)
+for (i in 1:n_obs) {
+  outcome[i] <- sample(1:n_cat, size = 1, prob = p[i,])  
+}
+```
+
+Let's take a look at the outcomes that occured and their probabilities. Again notice how the data nicely partitions the species into groups. Your data may not be so nice.
+```{r}
+plot_ly(data = data.frame(cbind(X, paste("Fish", outcome))), 
+        x = ~X1, y = ~X2, z = ~X3, 
+        color = ~X4) %>%
+  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'Dorsal fin length'),
+                      yaxis = list(title = 'Pectoral fin length'),
+                      zaxis = list(title = 'Caudal fin length')))
+```
+
+Next let's see if we can fit a categorical regression to these data
+and recover the relationship between the fin measurements and the species.
+First let's take a look at the Stan code.
+```{r, comment = NA}
+writeLines(readLines("categorical_regression.stan"))
+```
+
+You see the usual data input at the top, but then you'll see a 
+transformed data block. This is because in order for the model to be
+identifiable we must set one of the categories as a reference category. We
+do this by setting it's coefficients to zero, which is what the vector in the
+transformed data block will be used for.
+
+Next we define the parameters which are now a n_cov x (n_cat-1) matrix.
+
+The model block takes the parameter estimates and calculates the category scores for 
+each observation, converts those into a vector of probabilities, and calculates
+the likelihood using the categorical distribution.
+
+Finally, in the generated quantities block, we calculate the probability estimates for each set of observations (fin measurements).
+
+
+Next let's fit the model to the data.
+```{r, results = "hide"}
+fit <- stan(file = "categorical_regression.stan", 
+                 data = list(n_obs = n_obs, 
+                             n_cat = n_cat,
+                             n_cov = n_cov,
+                             outcome = outcome,
+                             X = X),
+            chains = 4, cores = 4)
+```
+
+We can perform an intial check for convergence by looking at the Rhat for
+each parameter (for a more in-depth look at fit diagnostics launch
+`shinystan::launch_shinystan(fit)`).
+```{r}
+summary(fit, probs = c(.1, .5, .9))$summary[1:6,]
+```
+
+The actual parameter estimates are tricky to interpret though since
+the B matrix is set up differently in the stan model than in the 
+simulation model. So a good way to examine model fit is to plot the
+estimated probabilities versus the true probabilities.
+```{r}
+fit_summary <- 
+  summary(fit, pars = "p_est", probs = c(0.05, 0.95))$summary %>% 
+  as.data.frame %>%
+  dplyr::mutate(obs_cat = substr(row.names(.), 7, 999)) %>%
+  tidyr::separate(obs_cat, c("observation", "category"), ",") %>%
+  dplyr::mutate(category = gsub(pattern = "]", replacement = "", x = category),
+                observation = as.integer(observation)) %>%
+  dplyr::left_join({p %>% 
+                    as.data.frame() %>% 
+                    dplyr::mutate(observation = 1:n_obs) %>%
+                    tidyr::gather(category, true_p, -observation) %>%
+                    dplyr::mutate(category = gsub("V", "", category))})
+
+ggplot(fit_summary, aes(x = true_p, y = mean)) +
+  geom_point() +
+  geom_abline() +
+  facet_wrap(~category) +
+  theme_bw() +
+  xlab("True probablity") +
+  ylab("Estimated probability") 
+```
+
+We see that they mostly match up pretty well, which is encouraging.
+Importantly, each of the estimated probabilities has an uncertainty associated 
+with it, and that is captured in its posterior distribution. To show that, we can plot
+the quantiles of the posterior (i.e., the credible intervals). I'll plot the
+95% credible interval for each estimate.
+```{r}
+  ggplot(fit_summary, aes(x = true_p, y = mean)) +
+  geom_point() +
+  geom_abline() +
+  facet_wrap(~category) +
+  theme_bw() +
+  xlab("True probablity") +
+  ylab("Estimated probability") +
+  geom_errorbar(width=.02, alpha = 0.4, aes(ymin=`5%`, ymax=`95%`))
+```
+
+We see that the 95% interval tends to capture the one-to-one line most of the time, another sign that our model is working as we intended.
+
+Let's also calculate a summary statistic that describes how well our predicted 
+probabilities match the true probabilities. We'll just calculate the mean squared
+error of the predicted probabilities vs the true probabilities, and compare that
+to the mean squared error of predicting equal probabilities for each category.
+```{r}
+  mean((fit_summary$mean - fit_summary$true_p)^2) /mean((1/3 - fit_summary$true_p)^2)
+```
+So the model has roughly 2% of the error that you would get if you just predicted all categories were equally likely all the time.
+
+In conclusion, we went over the components of a categorical regression, fit it to some simulated data, and showed that it recovers the data generating process reasonably well.
+  
