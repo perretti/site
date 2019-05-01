@@ -1,5 +1,5 @@
 ---
-title: Categorical regression in Stan
+title: Classifying fish species using categorical regression in Stan
 date: '2019-05-01'
 tags:
   - R
@@ -98,7 +98,7 @@ for (i in 1:n_obs) {
 
 Let's take a look at the outcomes that occured and their probabilities. Again notice how the data nicely partitions the species into groups. Your data may not be so nice.
 ```{r}
-plot_ly(data = data.frame(cbind(X, paste("Fish", outcome))), 
+plot_ly(data = data.frame(cbind(X, paste("species", outcome))), 
         x = ~X1, y = ~X2, z = ~X3, 
         color = ~X4) %>%
   add_markers() %>%

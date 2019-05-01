@@ -12,11 +12,11 @@
     
     
     <item>
-      <title>Categorical regression in Stan</title>
-      <link>/post/2019/05/01/categorical-regression-in-stan/</link>
+      <title>Classifying fish species using categorical regression in Stan</title>
+      <link>/post/2019/05/01/classifying-fish-species-using-categorical-regression-in-stan/</link>
       <pubDate>Wed, 01 May 2019 00:00:00 +0000</pubDate>
       
-      <guid>/post/2019/05/01/categorical-regression-in-stan/</guid>
+      <guid>/post/2019/05/01/classifying-fish-species-using-categorical-regression-in-stan/</guid>
       <description>Predicting a categorical response is a fairly common task in ecology. For example, we might want to predict which species will colonize a particular habitat given some characteristics of the habitat. Or which species an individual belongs to based on some body mesurements. The underlying goal is to construct a model that relates a set of measured covariates to a categorical outcome. Often we would like to also know the probability that each outcome will occur, rather than just the most likely outcome.</description>
     </item>
     
