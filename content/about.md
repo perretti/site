@@ -3,7 +3,7 @@ title:
 author: Charles Perretti
 ---
 
-*Fisheries Biologist (contractor)*\\
+*Fishery Biologist (contractor)*\\
 *Population Dynamics Branch*\\
 *Northeast Fisheries Science Center, NMFS, NOAA*\\
 *Woods Hole, MA*
